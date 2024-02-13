@@ -1,27 +1,28 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
-using Izzy_Moonbot.Settings;
-using Izzy_Moonbot.Adapters;
-using Microsoft.Extensions.Configuration;
-using System.IO;
-using System.Text.RegularExpressions;
 using Flurl.Http;
+using Izzy_Moonbot.Adapters;
+using Izzy_Moonbot.Settings;
+using Microsoft.Extensions.Configuration;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace Izzy_Moonbot.Helpers;
 
-public static class DiscordHelper
+public static partial class DiscordHelper
 {
-    public readonly static int MessageLengthLimit = 2000;
+    public static readonly int MessageLengthLimit = 2000;
 
     // These setters should only be used by tests
     public static ulong? DefaultGuildId { get; set; } = null;
+
     public static List<ulong>? DevUserIds { get; set; } = null;
     public static bool PleaseAwaitEvents { get; set; } = false;
+    public static Regex UnfurlableUrl { get => _unfurlableUrl; set => _unfurlableUrl = value; }
 
     // In production code, our event handlers need to return immediately no matter how
     // much work there is to do, or else we "block the gateway task".
@@ -37,13 +38,14 @@ public static class DiscordHelper
     {
         return ShouldExecuteInPrivate(externalUsageAllowedFlag, new SocketCommandContextAdapter(context));
     }
+
     public static bool ShouldExecuteInPrivate(bool externalUsageAllowedFlag, IIzzyContext context)
     {
         if (context.IsPrivate || context.Guild?.Id != DefaultGuild())
         {
             return externalUsageAllowedFlag;
         }
-        
+
         return true;
     }
 
@@ -51,13 +53,14 @@ public static class DiscordHelper
     {
         return IsDefaultGuild(new SocketCommandContextAdapter(context));
     }
+
     public static bool IsDefaultGuild(IIzzyContext context)
     {
         if (context.IsPrivate) return false;
-        
+
         return context.Guild?.Id == DefaultGuild();
     }
-    
+
     public static ulong DefaultGuild()
     {
         var maybeDefaultGuildId = DefaultGuildId;
@@ -77,7 +80,7 @@ public static class DiscordHelper
             throw;
         }
     }
-    
+
     public static bool IsDev(ulong user)
     {
         var maybeDevUserIds = DevUserIds;
@@ -91,21 +94,19 @@ public static class DiscordHelper
     public static DiscordSettings GetDiscordSettings()
     {
         var config = new ConfigurationBuilder()
-            #if DEBUG
+#if DEBUG
             .AddJsonFile("appsettings.Development.json")
-            #else
+#else
             .AddJsonFile("appsettings.json")
-            #endif
+#endif
             .Build();
 
         var section = config.GetSection(nameof(DiscordSettings));
-        var settings = section.Get<DiscordSettings>();
-        
-        if (settings == null) throw new NullReferenceException("Discord settings is null!");
+        var settings = section.Get<DiscordSettings>() ?? throw new NullReferenceException("Discord settings is null!");
 
         return settings;
     }
-    
+
     public static bool IsProcessableMessage(IIzzyMessage msg)
     {
         if (msg.Type != MessageType.Default && msg.Type != MessageType.Reply &&
@@ -142,12 +143,12 @@ public static class DiscordHelper
     // string.Split() does not suffice because we want to support quoted arguments
     public static (string?, string?) GetArgument(string args)
     {
-        Func<string, string> trimQuotes = arg =>
+        static string trimQuotes(string arg)
         {
             return (arg[0] == '"' && arg.Last() == '"') ?
                 arg[1..(arg.Length - 1)] :
                 arg;
-        };
+        }
 
         var betweenQuotes = false;
         for (var i = 0; i < args.Length; i++)
@@ -156,13 +157,13 @@ public static class DiscordHelper
 
             // start or end a quoted argument only if that quote is unescaped
             // (and \ only has this special meaning when preceding ")
-            if ((c == '"') && (i <= 1 || args[i-1] != '\\'))
+            if ((c == '"') && (i <= 1 || args[i - 1] != '\\'))
                 betweenQuotes = !betweenQuotes;
 
             // found a space outside quotes; that means we've reached the end of the current arg
             if (IsSpace(c) && !betweenQuotes)
             {
-                var nextArg = args.Substring(0, i);
+                var nextArg = args[..i];
 
                 var endOfSpaceRun = i;
                 while (endOfSpaceRun < args.Length && IsSpace(args[endOfSpaceRun]))
@@ -176,8 +177,8 @@ public static class DiscordHelper
                     // otherwise there are more args left to parse with future GetArgument() calls
                     (nextArg == "") ?
                         // if this "arg" was the empty string, recurse so caller gets the first non-empty arg if any
-                        GetArgument(args.Substring(endOfSpaceRun)) :
-                        (trimQuotes(nextArg), args.Substring(endOfSpaceRun));
+                        GetArgument(args[endOfSpaceRun..]) :
+                        (trimQuotes(nextArg), args[endOfSpaceRun..]);
             }
         }
 
@@ -219,8 +220,8 @@ public static class DiscordHelper
 
         return new ArgumentResult
         {
-            Arguments = arguments.ToArray(),
-            Indices = indices.ToArray()
+            Arguments = [.. arguments],
+            Indices = [.. indices]
         };
     }
 
@@ -245,15 +246,15 @@ public static class DiscordHelper
             @":blank:",
             @"<:blank:[0-9]+>"
         ];
-        var runOfDiscordWhitespace = $"({ string.Join("|", singleCharacterOrEmojiOfWhitespace)})+";
+        var runOfDiscordWhitespace = $"({string.Join("|", singleCharacterOrEmojiOfWhitespace)})+";
 
         var leadingWhitespaceRegex = new Regex($"^{runOfDiscordWhitespace}");
         var trailingWhitespaceRegex = new Regex($"{runOfDiscordWhitespace}$");
 
         var s = wholeString;
-        if (leadingWhitespaceRegex.Matches(s).Any())
+        if (leadingWhitespaceRegex.Matches(s).Count != 0)
             s = leadingWhitespaceRegex.Replace(s, "");
-        if (trailingWhitespaceRegex.Matches(s).Any())
+        if (trailingWhitespaceRegex.Matches(s).Count != 0)
             s = trailingWhitespaceRegex.Replace(s, "");
 
         return s;
@@ -285,10 +286,7 @@ public static class DiscordHelper
         // actually compute LD(s[0..i], t[0..j+1]) for every i and j
         for (int j = 0; j < target.Length; j++)
         {
-            int[] swap = prevDists;
-            prevDists = currDists;
-            currDists = swap;
-
+            (currDists, prevDists) = (prevDists, currDists);
             currDists[0] = j + 1; // i == 0 base case: LD(s[0..0], t[0..j+1]) == j+1
 
             for (int i = 0; i < source.Length; i++)
@@ -327,6 +325,7 @@ public static class DiscordHelper
     {
         return await AuditLogForCommand(new SocketCommandContextAdapter(context));
     }
+
     public static async Task<string> AuditLogForCommand(IIzzyContext context)
     {
         var user = context.User;
@@ -350,6 +349,7 @@ public static class DiscordHelper
     {
         return DisplayName(new DiscordNetUserAdapter(user), guild != null ? new SocketGuildAdapter(guild) : null);
     }
+
     public static string DisplayName(IIzzyUser user, IIzzyGuild? guild)
     {
         var member = guild?.GetUser(user.Id);
@@ -360,6 +360,8 @@ public static class DiscordHelper
     // Izzy often wants to identify urls in a message that *will* unfurl, so we need a reliable way
     // to identify urls that aren't enclosed by <>.
     // This is essentially https://stackoverflow.com/a/3809435 with added lookaround for <>s.
-    public static Regex UnfurlableUrl =
-        new(@"(?<!<)(https?://(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*))(?!>)");
+    private static Regex _unfurlableUrl = MyRegex();
+
+    [GeneratedRegex(@"(?<!<)(https?://(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*))(?!>)")]
+    private static partial Regex MyRegex();
 }

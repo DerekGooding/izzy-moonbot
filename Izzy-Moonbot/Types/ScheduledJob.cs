@@ -1,38 +1,25 @@
-using System;
 using Discord;
 using Izzy_Moonbot.Adapters;
 
 namespace Izzy_Moonbot.Settings;
 
-public class ScheduledJob
+public class ScheduledJob(DateTimeOffset createdAt, DateTimeOffset executeAt, ScheduledJobAction action,
+    ScheduledJobRepeatType repeatType = ScheduledJobRepeatType.None)
 {
-    public ScheduledJob(DateTimeOffset createdAt, DateTimeOffset executeAt, ScheduledJobAction action,
-        ScheduledJobRepeatType repeatType = ScheduledJobRepeatType.None)
-    {
-        Id = Guid.NewGuid().ToString();
-        CreatedAt = createdAt;
-        LastExecutedAt = null;
-        ExecuteAt = executeAt;
-        Action = action;
-        RepeatType = repeatType;
-    }
+    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public DateTimeOffset CreatedAt { get; set; } = createdAt;
+    public DateTimeOffset? LastExecutedAt { get; set; } = null;
+    public DateTimeOffset ExecuteAt { get; set; } = executeAt;
+    public ScheduledJobAction Action { get; set; } = action;
+    public ScheduledJobRepeatType RepeatType { get; set; } = repeatType;
 
-    public string Id { get; set; }
-    public DateTimeOffset CreatedAt { get; set; }
-    public DateTimeOffset? LastExecutedAt { get; set; }
-    public DateTimeOffset ExecuteAt { get; set; }
-    public ScheduledJobAction Action { get; set; }
-    public ScheduledJobRepeatType RepeatType { get; set; }
-    
     public string ToDiscordString()
-    {
-        return $"`{Id}`: {Action.ToDiscordString()} <t:{ExecuteAt.ToUnixTimeSeconds()}:R>{(RepeatType != ScheduledJobRepeatType.None ? $", repeating {RepeatType.ToString()}{(LastExecutedAt != null ? $", last executed <t:{LastExecutedAt.Value.ToUnixTimeSeconds()}:R>": "")}" : "")}.";
-    }
+        => $"`{Id}`: {Action.ToDiscordString()} <t:{ExecuteAt.ToUnixTimeSeconds()}:R>{(RepeatType != ScheduledJobRepeatType.None ?
+           $", repeating {RepeatType}{(LastExecutedAt != null ? $", last executed <t:{LastExecutedAt.Value.ToUnixTimeSeconds()}:R>" : "")}" : "")}.";
 
     public string ToFileString()
-    {
-        return $"{Id}: {Action.ToFileString()} at {ExecuteAt:F}{(RepeatType != ScheduledJobRepeatType.None ? $", repeating {RepeatType.ToString()}{(LastExecutedAt != null ? $", last executed at {LastExecutedAt.Value:F}": "")}" : "")}.";
-    }
+        => $"{Id}: {Action.ToFileString()} at {ExecuteAt:F}{(RepeatType == ScheduledJobRepeatType.None ?
+           "" : $", repeating {RepeatType}{(LastExecutedAt != null ? $", last executed at {LastExecutedAt.Value:F}" : "")}")}.";
 }
 
 // Class only exists to be extended so we can have a single ScheduledJob class.
@@ -40,18 +27,13 @@ public class ScheduledJobAction
 {
     public ScheduledJobActionType Type { get; protected set; }
 
-    public virtual string ToDiscordString()
-    {
-        return "Unknown Scheduled Job Action";
-    }
+    public virtual string ToDiscordString() => "Unknown Scheduled Job Action";
 
-    public virtual string ToFileString()
-    {
-        return ToDiscordString();
-    }
+    public virtual string ToFileString() => ToDiscordString();
 }
 
 /* Scheduled Job Action types */
+
 public class ScheduledRoleJob : ScheduledJobAction
 {
     public ulong Role { get; protected set; }
@@ -64,7 +46,7 @@ public class ScheduledRoleRemovalJob : ScheduledRoleJob
     public ScheduledRoleRemovalJob(ulong role, ulong user, string? reason)
     {
         Type = ScheduledJobActionType.RemoveRole;
-        
+
         Role = role;
         User = user;
         Reason = reason;
@@ -73,21 +55,15 @@ public class ScheduledRoleRemovalJob : ScheduledRoleJob
     public ScheduledRoleRemovalJob(IRole role, IGuildUser user, string? reason)
     {
         Type = ScheduledJobActionType.RemoveRole;
-        
+
         Role = role.Id;
         User = user.Id;
         Reason = reason;
     }
 
-    public override string ToDiscordString()
-    {
-        return $"Remove <@&{Role}> (`{Role}`) from <@{User}> (`{User}`)";
-    }
+    public override string ToDiscordString() => $"Remove <@&{Role}> (`{Role}`) from <@{User}> (`{User}`)";
 
-    public override string ToFileString()
-    {
-        return $"Remove role {Role} from user {User}";
-    }
+    public override string ToFileString() => $"Remove role {Role} from user {User}";
 }
 
 public class ScheduledRoleAdditionJob : ScheduledRoleJob
@@ -95,30 +71,24 @@ public class ScheduledRoleAdditionJob : ScheduledRoleJob
     public ScheduledRoleAdditionJob(ulong role, ulong user, string? reason)
     {
         Type = ScheduledJobActionType.AddRole;
-        
+
         Role = role;
         User = user;
         Reason = reason;
     }
-    
+
     public ScheduledRoleAdditionJob(IIzzyRole role, IIzzyGuildUser user, string? reason)
     {
         Type = ScheduledJobActionType.AddRole;
-        
+
         Role = role.Id;
         User = user.Id;
         Reason = reason;
     }
-    
-    public override string ToDiscordString()
-    {
-        return $"Add <@&{Role}> (`{Role}`) to <@{User}> (`{User}`)";
-    }
-    
-    public override string ToFileString()
-    {
-        return $"Add role {Role} to user {User}";
-    }
+
+    public override string ToDiscordString() => $"Add <@&{Role}> (`{Role}`) to <@{User}> (`{User}`)";
+
+    public override string ToFileString() => $"Add role {Role} to user {User}";
 }
 
 public class ScheduledUnbanJob : ScheduledJobAction
@@ -126,7 +96,7 @@ public class ScheduledUnbanJob : ScheduledJobAction
     public ScheduledUnbanJob(ulong user, string? reason)
     {
         Type = ScheduledJobActionType.Unban;
-        
+
         User = user;
         Reason = reason;
     }
@@ -142,15 +112,9 @@ public class ScheduledUnbanJob : ScheduledJobAction
     public ulong User { get; }
     public string? Reason { get; }
 
-    public override string ToDiscordString()
-    {
-        return $"Unban <@{User}> (`{User}`)";
-    }
-    
-    public override string ToFileString()
-    {
-        return $"Unban user {User}";
-    }
+    public override string ToDiscordString() => $"Unban <@{User}> (`{User}`)";
+
+    public override string ToFileString() => $"Unban user {User}";
 }
 
 public class ScheduledEchoJob : ScheduledJobAction
@@ -178,19 +142,13 @@ public class ScheduledEchoJob : ScheduledJobAction
         ChannelOrUser = user.Id;
         Content = content;
     }
-    
+
     public ulong ChannelOrUser { get; }
     public string Content { get; }
-    
-    public override string ToDiscordString()
-    {
-        return $"Send \"{Content}\" to (<#{ChannelOrUser}>/<@{ChannelOrUser}>) (`{ChannelOrUser}`)";
-    }
-    
-    public override string ToFileString()
-    {
-        return $"Send \"{Content}\" to channel/user {ChannelOrUser}";
-    }
+
+    public override string ToDiscordString() => $"Send \"{Content}\" to (<#{ChannelOrUser}>/<@{ChannelOrUser}>) (`{ChannelOrUser}`)";
+
+    public override string ToFileString() => $"Send \"{Content}\" to channel/user {ChannelOrUser}";
 }
 
 public class ScheduledBannerRotationJob : ScheduledJobAction
@@ -205,15 +163,9 @@ public class ScheduledBannerRotationJob : ScheduledJobAction
     // Only used in Rotate mode
     public int? LastBannerIndex { get; set; }
 
-    public override string ToDiscordString()
-    {
-        return $"Run Banner Rotation";
-    }
-    
-    public override string ToFileString()
-    {
-        return ToDiscordString();
-    }
+    public override string ToDiscordString() => $"Run Banner Rotation";
+
+    public override string ToFileString() => ToDiscordString();
 }
 
 public class ScheduledBoredCommandsJob : ScheduledJobAction
@@ -222,6 +174,7 @@ public class ScheduledBoredCommandsJob : ScheduledJobAction
         Type = ScheduledJobActionType.BoredCommands;
 
     public override string ToDiscordString() => $"Run Bored Commands";
+
     public override string ToFileString() => ToDiscordString();
 }
 
@@ -236,6 +189,7 @@ public class ScheduledEndRaidJob : ScheduledJobAction
     public bool IsLarge { get; }
 
     public override string ToDiscordString() => $"End {(IsLarge ? "large" : "small")} raid";
+
     public override string ToFileString() => ToDiscordString();
 }
 

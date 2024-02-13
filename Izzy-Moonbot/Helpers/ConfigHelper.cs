@@ -1,9 +1,8 @@
-using System;
+using Izzy_Moonbot.Adapters;
+using Izzy_Moonbot.Settings;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Threading.Tasks;
-using Izzy_Moonbot.Adapters;
-using Izzy_Moonbot.Settings;
 
 namespace Izzy_Moonbot.Helpers;
 
@@ -11,30 +10,19 @@ public static class ConfigHelper
 {
     public static PropertyInfo? GetConfigProp(string key) =>
         typeof(Config).GetProperty(key, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
+
     public static bool ResolveBool(string boolResolvable)
     {
-        switch (boolResolvable.ToLower())
+        return boolResolvable.ToLower() switch
         {
-            case "true":
-            case "yes":
-            case "enable":
-            case "activate":
-            case "on":
-            case "y":
-                return true;
-            case "false":
-            case "no":
-            case "disable":
-            case "deactivate":
-            case "off":
-            case "n":
-                return false;
-            default:
-                throw new FormatException($"Couldn't process {boolResolvable} into a boolean.");
-        }
+            "true" or "yes" or "enable" or "activate" or "on" or "y" => true,
+            "false" or "no" or "disable" or "deactivate" or "off" or "n" => false,
+            _ => throw new FormatException($"Couldn't process {boolResolvable} into a boolean."),
+        };
     }
 
 #nullable enable
+
     public static object? GetValue(Config settings, string key)
     {
         if (GetConfigProp(key) is PropertyInfo pinfo)
@@ -108,7 +96,7 @@ public static class ConfigHelper
             }
             else
             {
-                if (ParseHelper.TryParseChannelResolvable(channelResolvable, context, out var channelParseError) is not var (channelId, _))
+                if (ParseHelper.TryParseChannelResolvable(channelResolvable, context, out var _) is not var (channelId, _))
                 {
                     pinfo.SetValue(settings, null);
                 }
@@ -230,7 +218,7 @@ public static class ConfigHelper
 
     private static HashSet<IIzzyUser> UserIdToUser(HashSet<ulong> set, IIzzyContext context)
     {
-        HashSet<IIzzyUser> finalSet = new();
+        HashSet<IIzzyUser> finalSet = [];
 
         foreach (var userId in set)
             if (context.Guild?.GetUser(userId) is IIzzyUser user)
@@ -315,7 +303,7 @@ public static class ConfigHelper
 
     private static HashSet<IIzzyRole> RoleIdToRole(HashSet<ulong> set, IIzzyContext context)
     {
-        HashSet<IIzzyRole> finalSet = new();
+        HashSet<IIzzyRole> finalSet = [];
 
         foreach (var roleId in set)
             if (context.Guild?.GetRole(roleId) is IIzzyRole role)
@@ -421,7 +409,7 @@ public static class ConfigHelper
 
     private static HashSet<IIzzySocketGuildChannel> ChannelIdToChannel(HashSet<ulong> set, IIzzyContext context)
     {
-        HashSet<IIzzySocketGuildChannel> finalSet = new();
+        HashSet<IIzzySocketGuildChannel> finalSet = [];
 
         foreach (var channelId in set)
             if (context.Guild?.GetChannel(channelId) is IIzzySocketGuildChannel channel)
@@ -606,9 +594,9 @@ public static class ConfigHelper
         {
             if (pinfo.GetValue(settings) is IDictionary<string, VALUE> dict)
             {
-                if (!dict.ContainsKey(dictionaryKey)) throw new KeyNotFoundException($"'{dictionaryKey}' is not in '{key}'");
+                if (!dict.TryGetValue(dictionaryKey, out VALUE? value)) throw new KeyNotFoundException($"'{dictionaryKey}' is not in '{key}'");
 
-                return dict[dictionaryKey];
+                return value;
             }
             throw new ArgumentException($"'{key}' is not a Dictionary.");
         }
@@ -687,7 +675,7 @@ public static class ConfigHelper
             {
                 try
                 {
-                    dict.Add(dictionaryKey, [ value ]);
+                    dict.Add(dictionaryKey, [value]);
 
                     pinfo.SetValue(settings, dict);
                     await FileHelper.SaveConfigAsync(settings);

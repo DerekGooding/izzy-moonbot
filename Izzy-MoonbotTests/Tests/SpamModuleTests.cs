@@ -111,5 +111,4 @@ public class SpamModuleTests
 
         Assert.AreEqual($"Current Pressure for Zipp (Zipp/3): 0", modChat.Messages.Last().Content);
     }
-
 }

@@ -1,11 +1,11 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Izzy_Moonbot.Helpers;
-using Izzy_Moonbot.Settings;
-using Izzy_Moonbot.Service;
-using Izzy_Moonbot.Modules;
 using Izzy_Moonbot;
-using Izzy_Moonbot_Tests.Services;
 using Izzy_Moonbot.Describers;
+using Izzy_Moonbot.Helpers;
+using Izzy_Moonbot.Modules;
+using Izzy_Moonbot.Service;
+using Izzy_Moonbot.Settings;
+using Izzy_Moonbot_Tests.Services;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Izzy_Moonbot_Tests.Modules;
 
@@ -36,7 +36,7 @@ public class ModMiscModuleTests
         // .echo with no channel argument
 
         var context = await client.AddMessageAsync(guild.Id, generalChannel.Id, sunny.Id, ".echo test");
-        await mmm.TestableEchoCommandAsync(context, "test");
+        await ModMiscModule.TestableEchoCommandAsync(context, "test");
 
         Assert.AreEqual(2, generalChannel.Messages.Count);
         Assert.AreEqual("test", generalChannel.Messages.Last().Content);
@@ -45,7 +45,7 @@ public class ModMiscModuleTests
         // .echo'ing to another channel
 
         context = await client.AddMessageAsync(guild.Id, modChat.Id, sunny.Id, $".echo <#{generalChannel.Id}> hello from mod chat");
-        await mmm.TestableEchoCommandAsync(context, $"<#{generalChannel.Id}> hello from mod chat");
+        await ModMiscModule.TestableEchoCommandAsync(context, $"<#{generalChannel.Id}> hello from mod chat");
 
         Assert.AreEqual(3, generalChannel.Messages.Count);
         Assert.AreEqual("hello from mod chat", generalChannel.Messages.Last().Content);
@@ -69,7 +69,6 @@ public class ModMiscModuleTests
         var qs = new QuoteService(quotes, userinfo);
         var mm = new MiscModule(cfg, cfgDescriber, ss, logger, modLog, await MiscModuleTests.SetupCommandService(), gs, qs);
 
-
         var context = await client.AddMessageAsync(guild.Id, generalChannel.Id, sunny.Id, ".schedule");
         await mmm.TestableScheduleCommandAsync(context, "");
 
@@ -79,7 +78,6 @@ public class ModMiscModuleTests
         StringAssert.Contains(description, "`.schedule about <id>` -");
         StringAssert.Contains(description, "`.schedule add");
 
-
         context = await client.AddMessageAsync(guild.Id, generalChannel.Id, sunny.Id, ".schedule list");
         await mmm.TestableScheduleCommandAsync(context, "list");
 
@@ -88,7 +86,6 @@ public class ModMiscModuleTests
         StringAssert.Contains(description, "\n\n\n"); // a blank list because nothing is scheduled
         StringAssert.Contains(description, "If you need a raw text file");
         Assert.AreEqual(0, ss.GetScheduledJobs().Count());
-
 
         DateTimeHelper.FakeUtcNow = TestUtils.FiMEpoch;
 
@@ -110,7 +107,6 @@ public class ModMiscModuleTests
         Assert.AreEqual(ScheduledJobActionType.Echo, job.Action.Type);
         Assert.AreEqual(sunny.Id, (job.Action as ScheduledEchoJob)?.ChannelOrUser);
         Assert.AreEqual("this is a test", (job.Action as ScheduledEchoJob)?.Content);
-
 
         context = await client.AddMessageAsync(guild.Id, generalChannel.Id, sunny.Id, $".schedule add echo 1 hour {generalChannel.Id} this is another test");
         await mmm.TestableScheduleCommandAsync(context, $"add echo 1 hour {generalChannel.Id} this is another test");

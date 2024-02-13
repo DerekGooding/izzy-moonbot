@@ -1,19 +1,16 @@
-using Discord;
 using Discord.WebSocket;
+using Izzy_Moonbot.Service;
 using Izzy_Moonbot.Settings;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
-using System;
 using System.Linq;
-using Izzy_Moonbot.Service;
 using System.Threading.Tasks;
-using Izzy_Moonbot.EventListeners;
 
 namespace Izzy_Moonbot.Helpers;
 
 public static class UserHelper
 {
-    public static bool updateUserInfoFromDiscord(User userInfo, SocketGuildUser socketGuildUser, Config config)
+    public static bool UpdateUserInfoFromDiscord(User userInfo, SocketGuildUser socketGuildUser, Config _)
     {
         var userInfoChanged = false;
 
@@ -64,7 +61,7 @@ public static class UserHelper
     {
         bool userInfoChanged = false;
         bool configChanged = false;
-        HashSet<ulong> rolesToAddIfMissing = new HashSet<ulong>();
+        HashSet<ulong> rolesToAddIfMissing = [];
         ScheduledJob? newMemberRemovalJob = null;
 
         if (config.ManageNewUserRoles)
@@ -125,7 +122,7 @@ public static class UserHelper
 
         HashSet<ulong> existingRoleIds = socketGuildUser.Roles.Select(r => r.Id).ToHashSet();
         HashSet<ulong> rolesToActuallyAdd = rolesToAddIfMissing.Where(r => !existingRoleIds.Contains(r)).ToHashSet();
-        await modService.AddRoles(socketGuildUser, rolesToActuallyAdd, auditLogMessage);
+        await ModService.AddRoles(socketGuildUser, rolesToActuallyAdd, auditLogMessage);
         return new JoinRoleResult(userInfoChanged, configChanged, rolesToActuallyAdd, newMemberRemovalJob);
     }
 
@@ -155,8 +152,8 @@ public static class UserHelper
         var totalUsersCount = guild.Users.Count;
         var newUserCount = 0;
         var updatedUserCount = 0;
-        Dictionary<ulong, int> roleAddedCounts = new();
-        HashSet<ulong> newMemberRemovalsScheduled = new();
+        Dictionary<ulong, int> roleAddedCounts = [];
+        HashSet<ulong> newMemberRemovalsScheduled = [];
 
         bool userInfoChanged = false;
         bool configChanged = false;
@@ -164,7 +161,7 @@ public static class UserHelper
         await foreach (var socketGuildUser in guild.Users.ToAsyncEnumerable())
         {
             User userInfo;
-            if (!allUserInfo.ContainsKey(socketGuildUser.Id))
+            if (!allUserInfo.TryGetValue(socketGuildUser.Id, out User? value))
             {
                 userInfo = new User();
                 allUserInfo.Add(socketGuildUser.Id, userInfo);
@@ -178,14 +175,14 @@ public static class UserHelper
                     newMemberRemovalsScheduled.Add(socketGuildUser.Id);
                 foreach (var roleId in result.rolesAdded)
                     if (roleAddedCounts.ContainsKey(roleId)) roleAddedCounts[roleId] += 1;
-                    else                                     roleAddedCounts[roleId] = 1;
+                    else roleAddedCounts[roleId] = 1;
             }
             else
             {
-                userInfo = allUserInfo[socketGuildUser.Id];
+                userInfo = value;
             }
 
-            bool changed = updateUserInfoFromDiscord(userInfo, socketGuildUser, config);
+            bool changed = UpdateUserInfoFromDiscord(userInfo, socketGuildUser, config);
             if (changed)
             {
                 updatedUserCount += 1;

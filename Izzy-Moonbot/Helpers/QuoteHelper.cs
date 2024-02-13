@@ -1,4 +1,3 @@
-﻿using System;
 using System.Linq;
 
 namespace Izzy_Moonbot.Helpers;

@@ -1,6 +1,6 @@
-﻿using Izzy_Moonbot.Helpers;
-using Izzy_Moonbot.Settings;
 using Izzy_Moonbot.EventListeners;
+using Izzy_Moonbot.Helpers;
+using Izzy_Moonbot.Settings;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Izzy_Moonbot_Tests.Helpers;
@@ -89,18 +89,18 @@ public class ConfigHelperTests
     }
 
     // The built-in Assert.AreEqual and CollectionsAssert.AreEqual have error messages so bad it was worth writing my own asserts
-    void AssertListsAreEqual<T>(IList<T>? expected, IList<T>? actual, string message = "")
-    {
-        if (expected is null || actual is null)
-        {
-            Assert.AreEqual(expected, actual);
-            return;
-        }
-        if (expected.Count() != actual.Count())
-            Assert.AreEqual(expected, actual, $"\nCount() mismatch: {expected.Count()} != {actual.Count()}");
-        foreach (var i in Enumerable.Range(0, expected.Count()))
-            Assert.AreEqual(expected[i], actual[i], $"\nItem {i}" + message);
-    }
+    //void AssertListsAreEqual<T>(IList<T>? expected, IList<T>? actual, string message = "")
+    //{
+    //    if (expected is null || actual is null)
+    //    {
+    //        Assert.AreEqual(expected, actual);
+    //        return;
+    //    }
+    //    if (expected.Count != actual.Count)
+    //        Assert.AreEqual(expected, actual, $"\nCount() mismatch: {expected.Count} != {actual.Count}");
+    //    foreach (var i in Enumerable.Range(0, expected.Count))
+    //        Assert.AreEqual(expected[i], actual[i], $"\nItem {i}" + message);
+    //}
 
     [TestMethod()]
     public async Task Config_HashSets_TestsAsync()

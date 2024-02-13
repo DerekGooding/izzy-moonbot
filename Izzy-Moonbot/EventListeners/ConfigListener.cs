@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Discord.WebSocket;
 using Izzy_Moonbot.Adapters;
 using Izzy_Moonbot.Helpers;
@@ -9,22 +5,17 @@ using Izzy_Moonbot.Service;
 using Izzy_Moonbot.Settings;
 using Izzy_Moonbot.Types;
 using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Izzy_Moonbot.EventListeners;
 
-public class ConfigListener
+public class ConfigListener(Config config, LoggingService logger, ScheduleService schedule)
 {
-    private readonly Config _config;
-    private readonly LoggingService _logger;
+    private readonly Config _config = config;
+    private readonly LoggingService _logger = logger;
 
-    private readonly ScheduleService _schedule;
-
-    public ConfigListener(Config config, LoggingService logger, ScheduleService schedule)
-    {
-        _config = config;
-        _logger = logger;
-        _schedule = schedule;
-    }
+    private readonly ScheduleService _schedule = schedule;
 
     public void RegisterEvents(DiscordSocketClient client)
     {
@@ -40,15 +31,19 @@ public class ConfigListener
             case "BannerMode":
                 await Handle_BannerMode(e, client);
                 break;
+
             case "BannerInterval":
                 await Handle_BannerInterval(e);
                 break;
+
             case "BoredChannel":
                 await Handle_BoredChannel(e, client);
                 break;
+
             case "BoredCooldown":
                 await Handle_BoredCooldown(e);
                 break;
+
             default:
                 throw new NotImplementedException("This config value doesn't have a method to fire on change.");
         }
@@ -74,9 +69,9 @@ public class ConfigListener
             // Create repeating job.
             var currentTime = DateTimeOffset.UtcNow;
             var executeTime = currentTime.AddMinutes(_config.BannerInterval);
-            
+
             _logger.Log($"Adding scheduled job to run the banner rotation job in {_config.BannerInterval} minutes", level: LogLevel.Debug);
-            Dictionary<string, string> fields = new Dictionary<string, string>();
+            Dictionary<string, string> fields = [];
             var action = new ScheduledBannerRotationJob();
             var job = new ScheduledJob(currentTime, executeTime, action, ScheduledJobRepeatType.Relative);
             await _schedule.CreateScheduledJob(job);
@@ -113,7 +108,7 @@ public class ConfigListener
 
         var original = e.Original is double originalDouble ? originalDouble : 0;
         var current = e.Current is double currentDouble ? currentDouble : 0;
-        
+
         var scheduledJobs = _schedule.GetScheduledJobs(job => job.Action is ScheduledBannerRotationJob);
 
         _logger.Log($"Updating all scheduled jobs for banner rotation to occur {current} minutes after enabling rotation instead of after {original} minutes.");
@@ -132,7 +127,7 @@ public class ConfigListener
         ManebooruFeatured
     }
 
-    private async Task Handle_BoredChannel(ConfigValueChangeEvent e, DiscordSocketClient client)
+    private async Task Handle_BoredChannel(ConfigValueChangeEvent e, DiscordSocketClient _)
     {
         var original = e.Original is ulong originalValue ? originalValue : 0;
         var current = e.Current is ulong currentValue ? currentValue : 0;
@@ -142,12 +137,12 @@ public class ConfigListener
         _logger.Log($"Clearing and recreating scheduled job for bored commands because bored channel changed from {original} to {current}.");
         var scheduledJobs = _schedule.GetScheduledJobs(job => job.Action is ScheduledBoredCommandsJob);
 
-        if (current == 0 && scheduledJobs.Any())
+        if (current == 0 && scheduledJobs.Count != 0)
         {
             foreach (var scheduledJob in scheduledJobs)
                 await _schedule.DeleteScheduledJob(scheduledJob);
         }
-        else if (current != 0 && !scheduledJobs.Any())
+        else if (current != 0 && scheduledJobs.Count == 0)
         {
             var nextJob = new ScheduledJob(DateTimeHelper.UtcNow, DateTimeHelper.UtcNow, new ScheduledBoredCommandsJob(), ScheduledJobRepeatType.None);
             await _schedule.CreateScheduledJob(nextJob);
@@ -163,7 +158,7 @@ public class ConfigListener
 
         var scheduledJobs = _schedule.GetScheduledJobs(job => job.Action is ScheduledBoredCommandsJob);
 
-        if (!scheduledJobs.Any())
+        if (scheduledJobs.Count == 0)
         {
             _logger.Log($"BoredCooldown changed, but no bored job exists. Creating a bored commands job.");
             var nextJob = new ScheduledJob(DateTimeHelper.UtcNow, DateTimeHelper.UtcNow, new ScheduledBoredCommandsJob(), ScheduledJobRepeatType.None);

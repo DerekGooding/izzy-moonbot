@@ -1,22 +1,10 @@
-using System;
-
 namespace Izzy_Moonbot.Types;
 
-public class ConfigValueChangeEvent : EventArgs
+public class ConfigValueChangeEvent(string name, object? original, object? current) : EventArgs
 {
-    public string Name;
-    public object? Original;
-    public object? Current;
+    public string Name = name;
+    public object? Original = original;
+    public object? Current = current;
 
-    public ConfigValueChangeEvent(string name, object? original, object? current)
-    {
-        Name = name;
-        Original = original;
-        Current = current;
-    }
-
-    public override string ToString()
-    {
-        return $"{Name}: {Original ?? "NULL"} => {Current ?? "NULL"}";
-    }
+    public override string ToString() => $"{Name}: {Original ?? "NULL"} => {Current ?? "NULL"}";
 }

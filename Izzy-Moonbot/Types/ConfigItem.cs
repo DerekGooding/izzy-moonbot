@@ -1,22 +1,13 @@
 namespace Izzy_Moonbot.Describers;
 
-public class ConfigItem
+public class ConfigItem(string name, ConfigItemType type, string description, ConfigItemCategory category,
+    bool nullable = false)
 {
-    public ConfigItem(string name, ConfigItemType type, string description, ConfigItemCategory category,
-        bool nullable = false)
-    {
-        Name = name;
-        Description = description;
-        Type = type;
-        Category = category;
-        Nullable = nullable;
-    }
-
-    public string Name { get; }
-    public ConfigItemType Type { get; }
-    public string Description { get; }
-    public ConfigItemCategory Category { get; }
-    public bool Nullable { get; }
+    public string Name { get; } = name;
+    public ConfigItemType Type { get; } = type;
+    public string Description { get; } = description;
+    public ConfigItemCategory Category { get; } = category;
+    public bool Nullable { get; } = nullable;
 }
 
 public enum ConfigItemCategory
@@ -37,6 +28,7 @@ public enum ConfigItemType
 {
     // Values
     String,
+
     Char,
     Boolean,
     Integer,
@@ -45,15 +37,16 @@ public enum ConfigItemType
     Enum,
     Role,
     Channel,
-    
+
     // Sets
     StringSet,
+
     RoleSet,
     ChannelSet,
-    
+
     // Dictionaries
     StringDictionary,
-    
+
     // Dictionaries of Sets
     StringSetDictionary
 }

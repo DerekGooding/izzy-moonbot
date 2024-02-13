@@ -1,12 +1,11 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Discord;
 using Izzy_Moonbot.Adapters;
 using Izzy_Moonbot.Describers;
 using Izzy_Moonbot.Helpers;
 using Izzy_Moonbot.Settings;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Izzy_Moonbot.Modules;
 
@@ -35,7 +34,7 @@ public class ConfigCommand
 
         var configItem = configDescriber.GetItem(configItemKey);
 
-        var configCategory = configDescriber.StringToCategory(configItemKey);
+        var configCategory = ConfigDescriber.StringToCategory(configItemKey);
 
         if (configItem == null)
         {
@@ -43,7 +42,7 @@ public class ConfigCommand
             {
                 // Invalid .config arguments
                 var userInput = configItemKey;
-                Func<string, bool> isSuggestable = item =>
+                bool isSuggestable(string item) =>
                     DiscordHelper.WithinLevenshteinDistanceOf(userInput, item, Convert.ToUInt32(item.Length / 2));
 
                 var itemsToSuggest = configDescriber.GetSettableConfigItems().Where(isSuggestable);
@@ -64,35 +63,42 @@ public class ConfigCommand
 
                 var itemNameList = configDescriber.GetSettableConfigItemsByCategory(category);
 
-                var itemShortDescriptionsList = itemNameList.Select(itemName => {
-                    var configItem = configDescriber.GetItem(itemName);
-                    if (configItem == null)
-                        throw new InvalidOperationException($"Failed to get configItem for key {itemName}");
+                var itemShortDescriptionsList = itemNameList.Select(itemName =>
+                {
+                    var configItem = configDescriber.GetItem(itemName) ?? throw new InvalidOperationException($"Failed to get configItem for key {itemName}");
 
-                    switch (configItem.Type)
+                    return configItem.Type switch
                     {
-                        case ConfigItemType.String: case ConfigItemType.Char: case ConfigItemType.Boolean:
-                        case ConfigItemType.Integer: case ConfigItemType.UnsignedInteger: case ConfigItemType.Double:
-                        case ConfigItemType.Enum: case ConfigItemType.Role: case ConfigItemType.Channel:
-                            return itemName + " = " + ConfigHelper.GetValue(config, itemName);
-                        case ConfigItemType.StringSet: case ConfigItemType.RoleSet: case ConfigItemType.ChannelSet:
-                        case ConfigItemType.StringDictionary: case ConfigItemType.StringSetDictionary:
-                            return itemName;
-                        default:
-                            throw new InvalidOperationException($"I seem to have encountered a setting type that I do not know about.");
-                    }
+                        ConfigItemType.String or
+                        ConfigItemType.Char or
+                        ConfigItemType.Boolean or
+                        ConfigItemType.Integer or
+                        ConfigItemType.UnsignedInteger or
+                        ConfigItemType.Double or
+                        ConfigItemType.Enum or
+                        ConfigItemType.Role or
+                        ConfigItemType.Channel => itemName + " = " + ConfigHelper.GetValue(config, itemName),
+
+                        ConfigItemType.StringSet or
+                        ConfigItemType.RoleSet or
+                        ConfigItemType.ChannelSet or
+                        ConfigItemType.StringDictionary or
+                        ConfigItemType.StringSetDictionary => itemName,
+
+                        _ => throw new InvalidOperationException($"I seem to have encountered a setting type that I do not know about."),
+                    };
                 }).ToList();
 
                 PaginationHelper.PaginateIfNeededAndSendMessage(
                     context,
-                    $"Hii!! Here's a list of all the config items I could find in the {configDescriber.CategoryToString(category)} category!",
+                    $"Hii!! Here's a list of all the config items I could find in the {ConfigDescriber.CategoryToString(category)} category!",
                     itemShortDescriptionsList,
                     $"Run `{config.Prefix}config <item>` to view information about an item! Please note that config items are *case sensitive*."
                 );
                 return;
             }
         }
-    
+
         // .config <itemKey>
 
         if (value == null || value == "")
@@ -105,7 +111,7 @@ public class ConfigCommand
         else
         {
             // value provided
-            if (configDescriber.TypeIsValue(configItem.Type))
+            if (ConfigDescriber.TypeIsValue(configItem.Type))
             {
                 switch (configItem.Type)
                 {
@@ -118,6 +124,7 @@ public class ConfigCommand
                         await context.Channel.SendMessageAsync($"I've set `{configItem.Name}` to the following content: {resultString}",
                             allowedMentions: AllowedMentions.None);
                         break;
+
                     case ConfigItemType.Char:
                         if (configItem.Nullable && value == "<nothing>") value = null;
 
@@ -144,6 +151,7 @@ public class ConfigCommand
                         }
 
                         break;
+
                     case ConfigItemType.Boolean:
                         if (configItem.Nullable && value == "<nothing>") value = null;
 
@@ -162,6 +170,7 @@ public class ConfigCommand
                         }
 
                         break;
+
                     case ConfigItemType.Integer:
                         if (configItem.Nullable && value == "<nothing>") value = null;
 
@@ -188,6 +197,7 @@ public class ConfigCommand
                         }
 
                         break;
+
                     case ConfigItemType.UnsignedInteger:
                         if (configItem.Nullable && value == "<nothing>") value = null;
 
@@ -214,6 +224,7 @@ public class ConfigCommand
                         }
 
                         break;
+
                     case ConfigItemType.Double:
                         if (configItem.Nullable && value == "<nothing>") value = null;
 
@@ -240,13 +251,13 @@ public class ConfigCommand
                         }
 
                         break;
+
                     case ConfigItemType.Enum:
                         if (configItem.Nullable && value == "<nothing>") value = null;
 
                         var rawValue = ConfigHelper.GetValue(config, configItem.Name);
-                        var enumValue = rawValue as Enum;
-                        if (enumValue == null) throw new InvalidCastException($"Config item {configItem} is supposed to be an enum, but its value {rawValue} failed the `as Enum` cast");
-
+                        var enumValue = rawValue as Enum ??
+                            throw new InvalidCastException($"Config item {configItem} is supposed to be an enum, but its value {rawValue} failed the `as Enum` cast");
                         var enumType = enumValue.GetType();
 
                         try
@@ -272,6 +283,7 @@ public class ConfigCommand
                                 allowedMentions: AllowedMentions.None);
                         }
                         break;
+
                     case ConfigItemType.Role:
                         if (configItem.Nullable && value == "<nothing>") value = null;
                         try
@@ -292,6 +304,7 @@ public class ConfigCommand
                         }
 
                         break;
+
                     case ConfigItemType.Channel:
                         if (configItem.Nullable && value == "<nothing>") value = null;
                         try
@@ -312,12 +325,13 @@ public class ConfigCommand
                         }
 
                         break;
+
                     default:
                         await context.Channel.SendMessageAsync("I seem to have encountered a setting type that I do not know about.");
                         break;
                 }
             }
-            else if (configDescriber.TypeIsSet(configItem.Type))
+            else if (ConfigDescriber.TypeIsSet(configItem.Type))
             {
                 var action = value.Split(' ')[0].ToLower();
                 value = value.Replace(action + " ", "");
@@ -342,6 +356,7 @@ public class ConfigCommand
                                 allowedMentions: AllowedMentions.None
                             );
                             break;
+
                         case ConfigItemType.RoleSet:
                             var roleSet = ConfigHelper.GetRoleSet(config, configItem.Name, context);
 
@@ -357,6 +372,7 @@ public class ConfigCommand
                                 allowedMentions: AllowedMentions.None
                             );
                             break;
+
                         case ConfigItemType.ChannelSet:
                             var channelSet =
                                 ConfigHelper.GetChannelSet(config, configItem.Name, context);
@@ -373,6 +389,7 @@ public class ConfigCommand
                                 allowedMentions: AllowedMentions.None
                             );
                             break;
+
                         default:
                             await context.Channel.SendMessageAsync("I seem to have encountered a setting type that I do not know about.");
                             break;
@@ -398,6 +415,7 @@ public class ConfigCommand
                             }
 
                             break;
+
                         case ConfigItemType.RoleSet:
                             try
                             {
@@ -426,6 +444,7 @@ public class ConfigCommand
                             }
 
                             break;
+
                         case ConfigItemType.ChannelSet:
                             try
                             {
@@ -454,6 +473,7 @@ public class ConfigCommand
                             }
 
                             break;
+
                         default:
                             await context.Channel.SendMessageAsync("I seem to have encountered a setting type that I do not know about.");
                             break;
@@ -485,6 +505,7 @@ public class ConfigCommand
                             }
 
                             break;
+
                         case ConfigItemType.RoleSet:
                             try
                             {
@@ -513,6 +534,7 @@ public class ConfigCommand
                             }
 
                             break;
+
                         case ConfigItemType.ChannelSet:
                             try
                             {
@@ -541,6 +563,7 @@ public class ConfigCommand
                             }
 
                             break;
+
                         default:
                             await context.Channel.SendMessageAsync("I seem to have encountered a setting type that I do not know about.");
                             break;
@@ -564,6 +587,7 @@ public class ConfigCommand
                             }
 
                             break;
+
                         case ConfigItemType.RoleSet:
                             try
                             {
@@ -580,6 +604,7 @@ public class ConfigCommand
                             }
 
                             break;
+
                         case ConfigItemType.ChannelSet:
                             try
                             {
@@ -595,12 +620,13 @@ public class ConfigCommand
                             }
 
                             break;
+
                         default:
                             await context.Channel.SendMessageAsync("I seem to have encountered a setting type that I do not know about.");
                             break;
                     }
             }
-            else if (configDescriber.TypeIsDictionaryValue(configItem.Type))
+            else if (ConfigDescriber.TypeIsDictionaryValue(configItem.Type))
             {
                 var action = value.Split(' ')[0].ToLower();
                 value = value.Replace(action + " ", "");
@@ -635,6 +661,7 @@ public class ConfigCommand
                             }
 
                             break;
+
                         default:
                             await context.Channel.SendMessageAsync("I seem to have encountered a setting type that I do not know about.");
                             break;
@@ -681,6 +708,7 @@ public class ConfigCommand
                             }
 
                             break;
+
                         default:
                             await context.Channel.SendMessageAsync("I seem to have encountered a setting type that I do not know about.");
                             break;
@@ -689,9 +717,9 @@ public class ConfigCommand
                 else if (action == "set")
                 {
                     var (key, setValue) = DiscordHelper.GetArgument(value);
-                    key = key ?? "";
+                    key ??= "";
                     value = setValue ?? "";
-                    
+
                     switch (configItem.Type)
                     {
                         case ConfigItemType.StringDictionary:
@@ -704,7 +732,7 @@ public class ConfigCommand
                                 if (configItem.Nullable)
                                 {
                                     if (value == "<nothing>") value = null;
-                                    
+
                                     if (ConfigHelper.DoesDictionaryKeyExist<string?>(config,
                                             configItem.Name, key))
                                         result = await ConfigHelper.SetNullableStringDictionaryValue(config,
@@ -747,6 +775,7 @@ public class ConfigCommand
                             }
 
                             break;
+
                         default:
                             await context.Channel.SendMessageAsync("I seem to have encountered a setting type that I do not know about.");
                             break;
@@ -782,6 +811,7 @@ public class ConfigCommand
                             }
 
                             break;
+
                         default:
                             await context.Channel.SendMessageAsync("I seem to have encountered a setting type that I do not know about.");
                             break;
@@ -807,6 +837,7 @@ public class ConfigCommand
                             }
 
                             break;
+
                         case ConfigItemType.StringSetDictionary:
                             try
                             {
@@ -823,6 +854,7 @@ public class ConfigCommand
                             }
 
                             break;
+
                         default:
                             await context.Channel.SendMessageAsync("I seem to have encountered a setting type that I do not know about.");
                             break;
@@ -835,7 +867,7 @@ public class ConfigCommand
                     return;
                 }
             }
-            else if (configDescriber.TypeIsDictionarySet(configItem.Type))
+            else if (ConfigDescriber.TypeIsDictionarySet(configItem.Type))
             {
                 var action = value.Split(' ')[0].ToLower();
                 value = value.Replace(action + " ", "");
@@ -868,6 +900,7 @@ public class ConfigCommand
                             }
 
                             break;
+
                         default:
                             await context.Channel.SendMessageAsync("I seem to have encountered a setting type that I do not know about.");
                             break;
@@ -880,7 +913,7 @@ public class ConfigCommand
                         await context.Channel.SendMessageAsync("Please provide a key to get.");
                         return;
                     }
-                    
+
                     switch (configItem.Type)
                     {
                         case ConfigItemType.StringSetDictionary:
@@ -918,7 +951,7 @@ public class ConfigCommand
                 {
                     var key = value.Split(' ')[0].ToLower();
                     value = value.Replace(key + " ", "");
-                    
+
                     switch (configItem.Type)
                     {
                         case ConfigItemType.StringSetDictionary:
@@ -947,7 +980,7 @@ public class ConfigCommand
                         default:
                             await context.Channel.SendMessageAsync("I seem to have encountered a setting type that I do not know about.");
                             break;
-                    }                    
+                    }
                 }
                 else if (action == "deleteitem")
                 {
@@ -1015,7 +1048,6 @@ public class ConfigCommand
                 }
                 else
                 {
-                    
                 }
             }
             else
@@ -1027,9 +1059,7 @@ public class ConfigCommand
 
     public static string ConfigItemDescription(Config config, ConfigDescriber configDescriber, string configItemKey)
     {
-        var configItem = configDescriber.GetItem(configItemKey);
-        if (configItem == null)
-            throw new InvalidOperationException($"Failed to get configItem for key {configItemKey}");
+        var configItem = configDescriber.GetItem(configItemKey) ?? throw new InvalidOperationException($"Failed to get configItem for key {configItemKey}");
 
         var nullableString = " (Pass `<nothing>` as the value when setting to set to nothing/null)";
         if (!configItem.Nullable) nullableString = "";
@@ -1042,54 +1072,59 @@ public class ConfigCommand
             case ConfigItemType.Integer:
             case ConfigItemType.UnsignedInteger:
             case ConfigItemType.Double:
-                return $"**{configItem.Name}** - {configDescriber.TypeToString(configItem.Type)} - {configDescriber.CategoryToString(configItem.Category)} category\n" +
+                return $"**{configItem.Name}** - {ConfigDescriber.TypeToString(configItem.Type)} - {ConfigDescriber.CategoryToString(configItem.Category)} category\n" +
                        $"*{configItem.Description}*\n" +
                        $"Current value: `{ConfigHelper.GetValue(config, configItem.Name)}`\n" +
                        $"Run `{config.Prefix}config {configItem.Name} <value>` to set this value.{nullableString}";
+
             case ConfigItemType.Enum:
                 // Figure out what its values are.
                 var rawValue = ConfigHelper.GetValue(config, configItem.Name);
-                var enumValue = rawValue as Enum;
-                if (enumValue == null) throw new InvalidCastException($"Config item {configItem} is supposed to be an enum, but its value {rawValue} failed the `as Enum` cast");
+                var enumValue = rawValue as Enum ??
+                    throw new InvalidCastException($"Config item {configItem} is supposed to be an enum, but its value {rawValue} failed the `as Enum` cast");
 
                 var enumType = enumValue.GetType();
                 var possibleEnumNames = enumType.GetEnumNames().Select(s => $"`{s}`").ToArray();
 
-                return $"**{configItem.Name}** - {configDescriber.TypeToString(configItem.Type)} - {configDescriber.CategoryToString(configItem.Category)} category\n" +
+                return $"**{configItem.Name}** - {ConfigDescriber.TypeToString(configItem.Type)} - {ConfigDescriber.CategoryToString(configItem.Category)} category\n" +
                        $"*{configItem.Description}*\n" +
                        $"Possible values are: {string.Join(", ", possibleEnumNames)}\n" +
                        $"Current value: `{enumType.GetEnumName(enumValue)}`\n" +
                        $"Run `{config.Prefix}config {configItem.Name} <value>` to set this value.{nullableString}";
+
             case ConfigItemType.Role:
                 return
-                    $"**{configItem.Name}** - {configDescriber.TypeToString(configItem.Type)} - {configDescriber.CategoryToString(configItem.Category)} category\n" +
+                    $"**{configItem.Name}** - {ConfigDescriber.TypeToString(configItem.Type)} - {ConfigDescriber.CategoryToString(configItem.Category)} category\n" +
                     $"*{configItem.Description}*\n" +
                     $"Current value: <@&{ConfigHelper.GetValue(config, configItem.Name)}>\n" +
                     $"Run `{config.Prefix}config {configItem.Name} <value>` to set this value.{nullableString}";
             case ConfigItemType.Channel:
-                return $"**{configItem.Name}** - {configDescriber.TypeToString(configItem.Type)} - {configDescriber.CategoryToString(configItem.Category)} category\n" +
+                return $"**{configItem.Name}** - {ConfigDescriber.TypeToString(configItem.Type)} - {ConfigDescriber.CategoryToString(configItem.Category)} category\n" +
                        $"*{configItem.Description}*\n" +
                        $"Current value: <#{ConfigHelper.GetValue(config, configItem.Name)}>\n" +
                        $"Run `{config.Prefix}config {configItem.Name} <value>` to set this value.{nullableString}";
+
             case ConfigItemType.StringSet:
             case ConfigItemType.RoleSet:
             case ConfigItemType.ChannelSet:
-                return $"**{configItem.Name}** - {configDescriber.TypeToString(configItem.Type)} - {configDescriber.CategoryToString(configItem.Category)} category\n" +
+                return $"**{configItem.Name}** - {ConfigDescriber.TypeToString(configItem.Type)} - {ConfigDescriber.CategoryToString(configItem.Category)} category\n" +
                        $"*{configItem.Description}*\n" +
                        $"Run `{config.Prefix}config {configItem.Name} list` to view the contents of this list.\n" +
                        $"Run `{config.Prefix}config {configItem.Name} add <value>` to add a value to this list.{nullableString}\n" +
                        $"Run `{config.Prefix}config {configItem.Name} remove <value>` to remove a value from this list.{nullableString}\n" +
                        $"Run `{config.Prefix}config {configItem.Name} clear` to clear this list of all values.{nullableString}";
+
             case ConfigItemType.StringDictionary:
-                return $"**{configItem.Name}** - {configDescriber.TypeToString(configItem.Type)} - {configDescriber.CategoryToString(configItem.Category)} category\n" +
+                return $"**{configItem.Name}** - {ConfigDescriber.TypeToString(configItem.Type)} - {ConfigDescriber.CategoryToString(configItem.Category)} category\n" +
                        $"*{configItem.Description}*\n" +
                        $"Run `{config.Prefix}config {configItem.Name} list` to view a list of keys in this map.\n" +
                        $"Run `{config.Prefix}config {configItem.Name} get <key>` to get the current value of a key in this map.\n" +
                        $"Run `{config.Prefix}config {configItem.Name} set <key> <value>` to set a key to a value in this map, creating the key if need be.\n" +
                        $"Run `{config.Prefix}config {configItem.Name} delete <key>` to delete a key from this map.\n" +
                        $"Run `{config.Prefix}config {configItem.Name} clear` to clear this map of all values.";
+
             case ConfigItemType.StringSetDictionary:
-                return $"**{configItem.Name}** - {configDescriber.TypeToString(configItem.Type)} - {configDescriber.CategoryToString(configItem.Category)} category\n" +
+                return $"**{configItem.Name}** - {ConfigDescriber.TypeToString(configItem.Type)} - {ConfigDescriber.CategoryToString(configItem.Category)} category\n" +
                        $"*{configItem.Description}*\n" +
                        $"Run `{config.Prefix}config {configItem.Name} list` to view a list of keys in this map.\n" +
                        $"Run `{config.Prefix}config {configItem.Name} get <key>` to get the values of a key in this map.\n" +
@@ -1097,6 +1132,7 @@ public class ConfigCommand
                        $"Run `{config.Prefix}config {configItem.Name} deleteitem <key> <value>` to remove a value from a key from this map.\n" +
                        $"Run `{config.Prefix}config {configItem.Name} deletelist <key>` to delete a key from this map.\n" +
                        $"Run `{config.Prefix}config {configItem.Name} clear` to clear this map of all values.";
+
             default:
                 return "I seem to have encountered a setting type that I do not know about.";
         }

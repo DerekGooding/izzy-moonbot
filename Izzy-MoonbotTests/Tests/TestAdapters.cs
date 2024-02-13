@@ -73,8 +73,9 @@ public class TestGuildUser : IIzzyGuildUser
         if (ur.ContainsKey(Id))
             ur[Id].Add(roleId);
         else
-            ur[Id] = [ roleId ];
+            ur[Id] = [roleId];
     }
+
     public async Task AddRolesAsync(IEnumerable<ulong> roles, RequestOptions? _requestOptions)
     {
         var ur = _guildBackref.UserRoles;
@@ -83,18 +84,19 @@ public class TestGuildUser : IIzzyGuildUser
         else
             ur[Id] = roles.ToList();
     }
+
     public async Task RemoveRoleAsync(ulong roleId, RequestOptions? _requestOptions)
     {
         var ur = _guildBackref.UserRoles;
         if (ur.ContainsKey(Id))
             ur[Id].Remove(roleId);
     }
+
     public async Task SetTimeOutAsync(TimeSpan span, RequestOptions? requestOptions)
     {
         /* not implemented */
     }
 }
-
 
 public class TestRole : IIzzyRole
 {
@@ -281,7 +283,8 @@ public class TestTextChannel : IIzzySocketTextChannel
         _clientBackref = client;
     }
 
-    public IReadOnlyCollection<IIzzyUser> Users {
+    public IReadOnlyCollection<IIzzyUser> Users
+    {
         get
         {
             if (!_guildBackref.ChannelAccessRole.ContainsKey(Id))
@@ -358,6 +361,7 @@ public class TestTextChannel : IIzzySocketTextChannel
             };
         }
     }
+
     public async IAsyncEnumerable<IReadOnlyCollection<IIzzyMessage>> GetMessagesAsync(int messageCount)
     {
         var stubMessages = _channel.Messages.TakeLast(messageCount);
@@ -421,9 +425,9 @@ public class TestMessageChannel : IIzzyMessageChannel
         }
         else
             if (maybeUser is null)
-                throw new KeyNotFoundException($"CurrentUser is somehow not in this channel");
-            else
-                throw new KeyNotFoundException($"This channel is somehow not in its own guild");
+            throw new KeyNotFoundException($"CurrentUser is somehow not in this channel");
+        else
+            throw new KeyNotFoundException($"This channel is somehow not in its own guild");
     }
 
     public async Task<IIzzyUserMessage> SendFileAsync(FileAttachment fa, string message)
@@ -439,9 +443,9 @@ public class TestMessageChannel : IIzzyMessageChannel
         }
         else
             if (maybeUser is null)
-                throw new KeyNotFoundException($"CurrentUser is somehow not in this channel");
-            else
-                throw new KeyNotFoundException($"This channel is somehow not in its own guild");
+            throw new KeyNotFoundException($"CurrentUser is somehow not in this channel");
+        else
+            throw new KeyNotFoundException($"This channel is somehow not in its own guild");
     }
 
     // Izzy only checks the channel type to avoid processing unusual ones
@@ -479,8 +483,8 @@ public class TestGuild : IIzzyGuild
     public IReadOnlyCollection<IIzzySocketTextChannel> TextChannels { get; }
     public IReadOnlyCollection<IIzzyRole> Roles { get => _stubGuild.Roles; }
 
-    readonly private StubGuild _stubGuild;
-    readonly private StubClient _clientBackref;
+    private readonly StubGuild _stubGuild;
+    private readonly StubClient _clientBackref;
 
     public TestGuild(StubGuild stub, StubClient client)
     {
@@ -496,12 +500,15 @@ public class TestGuild : IIzzyGuild
 
     public IIzzyGuildUser? GetUser(ulong userId) =>
         _stubGuild.Users.Where(user => user.Id == userId).Select(user => new TestGuildUser(new StubGuildUser(user.Username, user.Id, user.JoinedAt), _stubGuild, _clientBackref)).SingleOrDefault();
+
     public IIzzyRole? GetRole(ulong roleId) => Roles.Where(role => role.Id == roleId).SingleOrDefault();
+
     public IIzzySocketGuildChannel? GetChannel(ulong channelId)
     {
         var tc = TextChannels.Where(tc => tc.Id == channelId).SingleOrDefault();
         return tc is null ? null : new TestGuildChannel(tc.Name, tc.Id);
     }
+
     public IIzzySocketTextChannel? GetTextChannel(ulong channelId)
     {
         var stubChannel = _stubGuild.Channels.Where(tc => tc.Id == channelId).SingleOrDefault();
@@ -510,11 +517,16 @@ public class TestGuild : IIzzyGuild
 
     public async Task AddBanAsync(ulong userId, int _pruneDays, string _reason) =>
         _stubGuild.BannedUserIds.Add(userId);
+
     public async Task<bool> GetIsBannedAsync(ulong userId) =>
         _stubGuild.BannedUserIds.Contains(userId);
+
     public async Task RemoveBanAsync(ulong userId, string? _reason) =>
         _stubGuild.BannedUserIds.Remove(userId);
-    public async Task SetBanner(Image _image) { }
+
+    public async Task SetBanner(Image _image)
+    { }
+
     public IIzzySocketTextChannel? RulesChannel => _stubGuild.RulesChannel is null ? null :
         new TestTextChannel(_stubGuild, _stubGuild.RulesChannel, _clientBackref);
 }
@@ -545,9 +557,13 @@ public class StubClient : IIzzyClient
     public IReadOnlyCollection<IIzzyGuild> Guilds { get => _guilds.Select(g => new TestGuild(g, this)).ToList(); }
 
     public event Func<IIzzySocketMessageComponent, Task>? ButtonExecuted;
+
     public event Func<ulong, IIzzyMessage?, ulong, IIzzyMessageChannel?, Task>? MessageDeleted;
+
     public event Func<IIzzyMessage, Task>? MessageReceived;
+
     public event Func<string?, IIzzyMessage, IIzzyMessageChannel, Task>? MessageUpdated;
+
     public event Func<IIzzyGuildUser, Task>? UserJoined;
 
     public StubClient(IIzzyUser user, List<StubGuild> guilds)
@@ -558,8 +574,8 @@ public class StubClient : IIzzyClient
 
     private ulong NextId = 0;
 
-    readonly private IIzzyUser _currentUser;
-    readonly private List<StubGuild> _guilds;
+    private readonly IIzzyUser _currentUser;
+    private readonly List<StubGuild> _guilds;
 
     public async Task<TestIzzyContext> AddMessageAsync(ulong guildId, ulong channelId, ulong userId, string textContent,
         List<IAttachment>? attachments = null,
@@ -591,9 +607,9 @@ public class StubClient : IIzzyClient
             }
             else
                 if (maybeUser is null)
-                    throw new KeyNotFoundException($"No user with id {userId}");
-                else
-                    throw new KeyNotFoundException($"No channel with id {channelId}");
+                throw new KeyNotFoundException($"No user with id {userId}");
+            else
+                throw new KeyNotFoundException($"No channel with id {channelId}");
         }
         else throw new KeyNotFoundException($"No guild with id {guildId}");
     }
@@ -650,6 +666,7 @@ public class StubClient : IIzzyClient
             return Task.CompletedTask;
         }
     }
+
     public void FireButtonExecuted(ulong userId, ulong messageId, string customId)
     {
         ButtonExecuted?.Invoke(new TestSocketMessageComponent(userId, messageId, customId));
@@ -705,7 +722,7 @@ public class StubClient : IIzzyClient
         if (DirectMessages.ContainsKey(userId))
             DirectMessages[userId].Add(dm);
         else
-            DirectMessages[userId] = [ dm ];
+            DirectMessages[userId] = [dm];
     }
 
     public async Task JoinUser(string username, ulong userId, StubGuild stubGuild)

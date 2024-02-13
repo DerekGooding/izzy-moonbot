@@ -1,4 +1,9 @@
-using System;
+using Discord;
+using Discord.Net;
+using Izzy_Moonbot.Adapters;
+using Izzy_Moonbot.Helpers;
+using Izzy_Moonbot.Settings;
+using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -6,48 +11,29 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Discord;
-using Discord.Net;
-using Izzy_Moonbot.Adapters;
-using Izzy_Moonbot.Helpers;
-using Izzy_Moonbot.Settings;
-using Microsoft.Extensions.Logging;
 
 namespace Izzy_Moonbot.Service;
 
-public class SpamService
+public partial class SpamService(LoggingService logger, ModService mod, ModLoggingService modLogger, Config config, Dictionary<ulong, User> users, TransientState state)
 {
-    private readonly LoggingService _logger;
-    private readonly ModService _mod;
-    private readonly ModLoggingService _modLogger;
-    private readonly Config _config;
-    private readonly Dictionary<ulong, User> _users;
-    private readonly TransientState _state;
-    
-    private readonly Regex _mention = new("<@&?[0-9]+>");
+    private readonly LoggingService _logger = logger;
+    private readonly ModService _mod = mod;
+    private readonly ModLoggingService _modLogger = modLogger;
+    private readonly Config _config = config;
+    private readonly Dictionary<ulong, User> _users = users;
+    private readonly TransientState _state = state;
+
+    private readonly Regex _mention = MyRegex();
     /*
      * The test string is a way to test the spam filter without actually spamming
      * The test string is programmed to immediately set pressure to Config.SpamMaxPressure.
      */
     public static readonly string _testString = "=+i7B3s+#(-{×jn6Ga3F~lA:IZZY_PRESSURE_TEST:H4fgd3!#!";
 
-    private readonly List<ulong> usersCurrentlyTrippingSpam = new();
+    private readonly List<ulong> _usersCurrentlyTrippingSpam = [];
 
-    public SpamService(LoggingService logger, ModService mod, ModLoggingService modLogger, Config config, Dictionary<ulong, User> users, TransientState state)
-    {
-        _logger = logger;
-        _mod = mod;
-        _modLogger = modLogger;
-        _config = config;
-        _users = users;
-        _state = state;
-    }
-    
-    public void RegisterEvents(IIzzyClient client)
-    {
-        // Register MessageReceived event
+    public void RegisterEvents(IIzzyClient client) =>
         client.MessageReceived += async (message) => await DiscordHelper.LeakOrAwaitTask(MessageReceiveEvent(message, client));
-    }
 
     public double GetPressure(ulong id)
     {
@@ -60,7 +46,7 @@ public class SpamService
 
         foreach (var rm in recentMessages)
         {
-            calculateMessagePressureWithoutDecay(rm, previousRecentMessage, out var pressureForMessage, out _);
+            CalculateMessagePressureWithoutDecay(rm, previousRecentMessage, out var pressureForMessage, out _);
 
             var pressureDecay = 0.0;
             if (previousRecentMessage is not null)
@@ -76,7 +62,7 @@ public class SpamService
         return totalPressure;
     }
 
-    private void calculateMessagePressureWithoutDecay(RecentMessage message, RecentMessage? previousMessage, out double pressure, out List<(double, string)> pressureBreakdown)
+    private void CalculateMessagePressureWithoutDecay(RecentMessage message, RecentMessage? previousMessage, out double pressure, out List<(double, string)> pressureBreakdown)
     {
         pressure = 0.0;
         pressureBreakdown = [];
@@ -129,7 +115,7 @@ public class SpamService
         }
 
         // Repeat pressure
-        if (previousMessage is not null && message.Content.ToLower() == previousMessage.Content.ToLower() && message.Content != "")
+        if (previousMessage is not null && message.Content.Equals(previousMessage.Content, StringComparison.CurrentCultureIgnoreCase) && message.Content != "")
         {
             pressure += _config.SpamRepeatPressure;
             pressureBreakdown.Add((_config.SpamRepeatPressure, $"Repeat of Previous Message: {_config.SpamRepeatPressure}"));
@@ -165,7 +151,7 @@ public class SpamService
         if (message.Content == _testString)
         {
             pressure = _config.SpamMaxPressure;
-            pressureBreakdown = [ (_config.SpamMaxPressure, "Test string") ];
+            pressureBreakdown = [(_config.SpamMaxPressure, "Test string")];
         }
     }
 
@@ -178,13 +164,13 @@ public class SpamService
         RecentMessage? previousRecentMessage = null;
 
         var pressureDecayPerSecond = _config.SpamBasePressure / _config.SpamPressureDecay;
-        List<(double, string)> lastPressureBreakdown = new();
+        List<(double, string)> lastPressureBreakdown = [];
         double oldPressureAfterDecay = 0.0;
         double totalPressure = 0.0;
 
         foreach (var rm in recentMessages)
         {
-            calculateMessagePressureWithoutDecay(rm, previousRecentMessage, out var pressureForMessage, out lastPressureBreakdown);
+            CalculateMessagePressureWithoutDecay(rm, previousRecentMessage, out var pressureForMessage, out lastPressureBreakdown);
 
             var pressureDecay = 0.0;
             if (previousRecentMessage is not null)
@@ -202,7 +188,7 @@ public class SpamService
         {
             _logger.Log("Spam pressure trip, checking whether user should be silenced or not...", context, level: LogLevel.Debug);
             var roleIds = user.Roles.Select(roles => roles.Id).ToList();
-            if (_config.SpamBypassRoles.Overlaps(roleIds) || 
+            if (_config.SpamBypassRoles.Overlaps(roleIds) ||
                 (DiscordHelper.IsDev(user.Id) && _config.SpamDevBypass))
             {
                 // User has a role which bypasses the punishment of spam trigger. Mention it in action log.
@@ -223,16 +209,16 @@ public class SpamService
                     .SetFileLogContent(
                         $"{user.DisplayName} (`{user.Username}`/`{user.Id}`) exceeded pressure max ({totalPressure}/{_config.SpamMaxPressure}) in #{message.Channel.Name} (`{message.Channel.Id}`).\n" +
                         $"Pressure breakdown: {PonyReadableBreakdown(lastPressureBreakdown)}\n" +
-                        $"Did nothing: User has a role which bypasses punishment or has dev bypass.") 
+                        $"Did nothing: User has a role which bypasses punishment or has dev bypass.")
                     .Send();
             }
             else
             {
                 // User is not immune to spam punishments, process trip.
                 _logger.Log($"Message {message.Id} task attempting to acquire lock on usersCurrentlyTrippingSpam.", context);
-                lock (usersCurrentlyTrippingSpam)
+                lock (_usersCurrentlyTrippingSpam)
                 {
-                    if (usersCurrentlyTrippingSpam.Contains(id))
+                    if (_usersCurrentlyTrippingSpam.Contains(id))
                     {
                         _logger.Log($"User {id} already has a spam trip being processed. Message {message.Id} task returning early.", context);
                         return;
@@ -240,7 +226,7 @@ public class SpamService
                     else
                     {
                         _logger.Log($"No spam trip in progress for user {id}. Message {message.Id} task proceeding with ProcessTrip() call.", context);
-                        usersCurrentlyTrippingSpam.Add(id);
+                        _usersCurrentlyTrippingSpam.Add(id);
                     }
                 }
 
@@ -276,8 +262,7 @@ public class SpamService
 
             try
             {
-                var channel = context.Guild.GetTextChannel(recentMessageItem.ChannelId);
-                if (channel == null)
+                var channel = context.Guild.GetTextChannel(recentMessageItem.ChannelId) ??
                     throw new InvalidOperationException($"{id}'s RecentMessages are somehow from a non-existent channel");
 
                 var recentMessage = channel is null ? null : await channel.GetMessageAsync(recentMessageItem.MessageId);
@@ -316,14 +301,14 @@ public class SpamService
 
         // We're done asking Discord to clean up this user's spam, so before we post mod logs
         // mark the user as no longer having an in-progress spam trip.
-        lock (usersCurrentlyTrippingSpam)
+        lock (_usersCurrentlyTrippingSpam)
         {
-            if (!usersCurrentlyTrippingSpam.Contains(id))
+            if (!_usersCurrentlyTrippingSpam.Contains(id))
                 _logger.Log($"User {id} is somehow missing from usersCurrentlyTrippingSpam in the ProcessTrip() call for them. This should be impossible.", level: LogLevel.Error);
             else
             {
                 _logger.Log($"ProcessTrip() call for message {message.Id} by user {id} is done cleaning up. Removing them from usersCurrentlyTrippingSpam.");
-                usersCurrentlyTrippingSpam.Remove(id);
+                _usersCurrentlyTrippingSpam.Remove(id);
             }
         }
 
@@ -342,7 +327,7 @@ public class SpamService
                     bulkDeletionLog.Sort((x, y) => x.Item1.CompareTo(y.Item1));
                     var bulkDeletionLogString = string.Join("\n\n", bulkDeletionLog.Select(logElement => logElement.Item2));
                     var s = new MemoryStream(Encoding.UTF8.GetBytes(bulkDeletionLogString));
-                    var fa = new FileAttachment(s, $"{context.User.Username}_{context.User.Id}_spam_bulk_deletion_log_{DateTimeHelper.UtcNow.ToString()}.txt");
+                    var fa = new FileAttachment(s, $"{context.User.Username}_{context.User.Id}_spam_bulk_deletion_log_{DateTimeHelper.UtcNow}.txt");
 
                     var spamBulkDeletionMessage = await logChannel.SendFileAsync(fa,
                         $"Deleted recent messages from {context.User.Username} ({context.User.Id}) after they tripped spam detection, here's the bulk deletion log:");
@@ -400,13 +385,12 @@ public class SpamService
         if (!DiscordHelper.IsInGuild(messageParam)) return; // Not in guild (in dm/group)
         if (!DiscordHelper.IsProcessableMessage(messageParam)) return; // Not processable
         if (messageParam is not IIzzyUserMessage message) return; // Not processable
-        
+
         var context = client.MakeContext(message);
 
         if (!DiscordHelper.IsDefaultGuild(context)) return;
-        
-        var guildUser = context.User as IIzzyGuildUser;
-        if (guildUser == null) return; // Not processable
+
+        if (context.User is not IIzzyGuildUser guildUser) return; // Not processable
         if (guildUser.Id == client.CurrentUser.Id) return; // Don't process the bot
         if (_config.SpamIgnoredChannels.Contains(context.Channel.Id)) return; // Don't process ignored channels
 
@@ -439,4 +423,7 @@ public class SpamService
             }
         }
     }
+
+    [GeneratedRegex("<@&?[0-9]+>")]
+    private static partial Regex MyRegex();
 }

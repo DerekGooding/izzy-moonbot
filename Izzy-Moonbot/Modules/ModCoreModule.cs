@@ -1,9 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
@@ -14,29 +8,25 @@ using Izzy_Moonbot.Helpers;
 using Izzy_Moonbot.Service;
 using Izzy_Moonbot.Settings;
 using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace Izzy_Moonbot.Modules;
 
 [Summary("The need-to-know moderator-only commands.")]
-public class ModCoreModule : ModuleBase<SocketCommandContext>
+public class ModCoreModule(LoggingService logger, Config config, Dictionary<ulong, User> users,
+    ScheduleService schedule, ModService mod, ConfigDescriber configDescriber) : ModuleBase<SocketCommandContext>
 {
-    private readonly LoggingService _logger;
-    private readonly Config _config;
-    private readonly ScheduleService _schedule;
-    private readonly Dictionary<ulong, User> _users;
-    private readonly ModService _mod;
-    private readonly ConfigDescriber _configDescriber;
-
-    public ModCoreModule(LoggingService logger, Config config, Dictionary<ulong, User> users,
-        ScheduleService schedule, ModService mod, ConfigDescriber configDescriber)
-    {
-        _logger = logger;
-        _config = config;
-        _schedule = schedule;
-        _users = users;
-        _mod = mod;
-        _configDescriber = configDescriber;
-    }
+    private readonly LoggingService _logger = logger;
+    private readonly Config _config = config;
+    private readonly ScheduleService _schedule = schedule;
+    private readonly Dictionary<ulong, User> _users = users;
+    private readonly ModService _mod = mod;
+    private readonly ConfigDescriber _configDescriber = configDescriber;
+    private static readonly char[] _separator = [' ', '\r', '\n', '\t', '\v'];
 
     [Command("config")]
     [Summary("Inspect or modify one of Izzy's configuration items")]
@@ -102,7 +92,7 @@ public class ModCoreModule : ModuleBase<SocketCommandContext>
         await ReplyAsync(output, allowedMentions: AllowedMentions.None);
     }
 
-    static public async Task<string> UserInfoImpl(DiscordSocketClient client, ulong guildId, ulong userId, Dictionary<ulong, User> users)
+    public static async Task<string> UserInfoImpl(DiscordSocketClient client, ulong guildId, ulong userId, Dictionary<ulong, User> users)
     {
         var output = $"";
 
@@ -119,8 +109,7 @@ public class ModCoreModule : ModuleBase<SocketCommandContext>
             output += $"**User:** `<@{discordUser.Id}>` {DiscordHelper.DisplayName(discordUser, guild)} ({discordUser.Username}/{discordUser.Id})\n";
             output += $"**{guild.Name} Server Nickname**: None (user isn't in this server)\n";
             output += $"**Global Display Name**: {discordUser.GlobalName ?? "None"}\n";
-            output += users.ContainsKey(discordUser.Id)
-                ? $"**All Known Names:** {string.Join(", ", users[discordUser.Id].Aliases)}\n"
+            output += users.TryGetValue(discordUser.Id, out User? value) ? $"**All Known Names:** {string.Join(", ", value.Aliases)}\n"
                 : $"**All Known Names:** None (user isn't known by Izzy)\n";
             output += $"**Roles:** None (user isn't in this server)\n";
             output += "**History:** ";
@@ -247,7 +236,7 @@ public class ModCoreModule : ModuleBase<SocketCommandContext>
             // No ban exists, very serious Izzy time.
             try
             {
-                await Context.Guild.AddBanAsync(userId, pruneDays: 0, reason: reason );
+                await Context.Guild.AddBanAsync(userId, pruneDays: 0, reason: reason);
             }
             catch (Exception ex)
             {
@@ -280,7 +269,7 @@ public class ModCoreModule : ModuleBase<SocketCommandContext>
                     $"Here's a userlog I unicycled that you can use if you want to!\n```\n" +
                     $"Type: Ban ({(argsAfterUser == "" ? "" : $"{argsAfterUser} ")}{(time == null ? "Indefinite" : $"<t:{time.Time.ToUnixTimeSeconds()}:R>")})\n" +
                     $"User: <@{userId}> ({userId})\n" +
-                    $"Names: {(_users.ContainsKey(userId) ? string.Join(", ", _users[userId].Aliases) : "None (user isn't known by Izzy)")}\n" +
+                    $"Names: {(_users.TryGetValue(userId, out User? value) ? string.Join(", ", value.Aliases) : "None (user isn't known by Izzy)")}\n" +
                     $"```";
             }
             await Context.Channel.SendMessageAsync(msg);
@@ -295,7 +284,7 @@ public class ModCoreModule : ModuleBase<SocketCommandContext>
             if (time == null)
             {
                 // time not declared, make ban permanent.
-                if (_schedule.GetScheduledJobs(getUserUnban).Any())
+                if (_schedule.GetScheduledJobs(getUserUnban).Count != 0)
                 {
                     var job = _schedule.GetScheduledJobs(getUserUnban).First();
 
@@ -308,7 +297,7 @@ public class ModCoreModule : ModuleBase<SocketCommandContext>
                             $"Here's a userlog I unicycled that you can use if you want to!\n```\n" +
                             $"Type: Ban (Indefinite)\n" +
                             $"User: <@{userId}> ({(member != null ? $"{member.Username}/" : "")}{userId})\n" +
-                            $"Names: {(_users.ContainsKey(userId) ? string.Join(", ", _users[userId].Aliases) : "None (user isn't known by Izzy)")}\n" +
+                            $"Names: {(_users.TryGetValue(userId, out User? value) ? string.Join(", ", value.Aliases) : "None (user isn't known by Izzy)")}\n" +
                             $"```";
                     }
                     await Context.Channel.SendMessageAsync(msg);
@@ -323,7 +312,7 @@ public class ModCoreModule : ModuleBase<SocketCommandContext>
             }
 
             // time declared, make ban temporary.
-            if (_schedule.GetScheduledJobs(getUserUnban).Any())
+            if (_schedule.GetScheduledJobs(getUserUnban).Count != 0)
             {
                 var jobs = _schedule.GetScheduledJobs(getUserUnban);
 
@@ -350,11 +339,11 @@ public class ModCoreModule : ModuleBase<SocketCommandContext>
                         $"Here's a userlog I unicycled that you can use if you want to!\n```\n" +
                         $"Type: Ban ({argsAfterUser} <t:{time.Time.ToUnixTimeSeconds()}:R>)\n" +
                         $"User: <@{userId}> ({(member != null ? $"{member.Username}/" : "")}{userId})\n" +
-                        $"Names: {(_users.ContainsKey(userId) ? string.Join(", ", _users[userId].Aliases) : "None (user isn't known by Izzy)")}\n" +
+                        $"Names: {(_users.TryGetValue(userId, out User? value) ? string.Join(", ", value.Aliases) : "None (user isn't known by Izzy)")}\n" +
                         $"```";
                 }
                 await Context.Channel.SendMessageAsync(msg);
-            } 
+            }
             else
             {
                 // Doesn't exist, it needs to exist.
@@ -370,7 +359,7 @@ public class ModCoreModule : ModuleBase<SocketCommandContext>
                         $"Here's a userlog I unicycled that you can use if you want to!\n```\n" +
                         $"Type: Ban ({argsAfterUser} <t:{time.Time.ToUnixTimeSeconds()}:R>)\n" +
                         $"User: <@{userId}> ({(member != null ? $"{member.Username}/" : "")}{userId})\n" +
-                        $"Names: {(_users.ContainsKey(userId) ? string.Join(", ", _users[userId].Aliases) : "None (user isn't known by Izzy)")}\n" +
+                        $"Names: {(_users.TryGetValue(userId, out User? value) ? string.Join(", ", value.Aliases) : "None (user isn't known by Izzy)")}\n" +
                         $"```";
                 }
                 await Context.Channel.SendMessageAsync(msg);
@@ -404,7 +393,7 @@ public class ModCoreModule : ModuleBase<SocketCommandContext>
             return;
         }
 
-        var userArgs = usersString.Split(new char[] { ' ', '\r', '\n', '\t', '\v' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var userArgs = usersString.Split(_separator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         foreach (var userArg in userArgs)
         {
             await TestableBanCommandAsync(context, userArg, false /* generateUserlogTemplate */);
@@ -494,7 +483,7 @@ public class ModCoreModule : ModuleBase<SocketCommandContext>
             var alreadyHasRole = member.Roles.Select(role => role.Id).Contains(roleId);
             if (!alreadyHasRole)
             {
-                await _mod.AddRoles(member, new[] { roleId }, await DiscordHelper.AuditLogForCommand(context));
+                await ModService.AddRoles(member, new[] { roleId }, await DiscordHelper.AuditLogForCommand(context));
             }
 
             var message = alreadyHasRole ? $"<@{userId}> already has that role." : $"I've given <@&{roleId}> to <@{userId}>.";
@@ -505,7 +494,7 @@ public class ModCoreModule : ModuleBase<SocketCommandContext>
                 removalJob.User == member.Id &&
                 removalJob.Role == roleId);
 
-            var hasExistingRemovalJob = _schedule.GetScheduledJobs(getRoleRemoval).Any();
+            var hasExistingRemovalJob = _schedule.GetScheduledJobs(getRoleRemoval).Count != 0;
             if (hasExistingRemovalJob)
             {
                 var jobs = _schedule.GetScheduledJobs(getRoleRemoval);
@@ -671,7 +660,7 @@ public class ModCoreModule : ModuleBase<SocketCommandContext>
             var involvedUserDescriptions = string.Join(", ", bulkDeletionLog.Select(logElement => logElement.Item2).ToHashSet());
 
             var s = new MemoryStream(Encoding.UTF8.GetBytes(bulkDeletionLogString));
-            var fa = new FileAttachment(s, $"{channel.Name}_bulk_deletion_log_{DateTimeHelper.UtcNow.ToString()}.txt");
+            var fa = new FileAttachment(s, $"{channel.Name}_bulk_deletion_log_{DateTimeHelper.UtcNow}.txt");
             var bulkDeletionMessage = await logChannel.SendFileAsync(fa, $"Finished wiping {channel.Name}, here's the bulk deletion log involving {involvedUserDescriptions}:");
 
             await ReplyAsync($"Finished wiping {channel.Mention}. {messagesToDeleteCount} messages were deleted: {bulkDeletionMessage.GetJumpUrl()}");

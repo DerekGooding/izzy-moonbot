@@ -1,37 +1,25 @@
-using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Linq;
-using System.Reflection;
-using System.Threading.Tasks;
-using System.Xml.Linq;
 using Discord;
 using Izzy_Moonbot.Adapters;
 using Izzy_Moonbot.Helpers;
 using Izzy_Moonbot.Settings;
-    
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Threading.Tasks;
+
 namespace Izzy_Moonbot.Service;
 
-public class QuoteService
+public class QuoteService(QuoteStorage quoteStorage, Dictionary<ulong, User> users)
 {
-    private readonly QuoteStorage _quoteStorage;
-    private readonly Dictionary<ulong, User> _users;
-    
-    public QuoteService(QuoteStorage quoteStorage, Dictionary<ulong, User> users)
-    {
-        _quoteStorage = quoteStorage;
-        _users = users;
-    }
+    private readonly QuoteStorage _quoteStorage = quoteStorage;
+    private readonly Dictionary<ulong, User> _users = users;
 
     /// <summary>
     /// Check whether an alias exists or not.
     /// </summary>
     /// <param name="alias">The alias to check.</param>
     /// <returns>Whether the alias exists or not.</returns>
-    public bool AliasExists(string alias)
-    {
-        return _quoteStorage.Aliases.Keys.Any(key => key.ToLower() == alias.ToLower());
-    }
+    public bool AliasExists(string alias) => _quoteStorage.Aliases.Keys.Any(key => key.Equals(alias, StringComparison.CurrentCultureIgnoreCase));
 
     public ulong ProcessAlias(string alias, IIzzyGuild? guild)
     {
@@ -52,47 +40,41 @@ public class QuoteService
     public async Task AddAlias(string alias, IIzzyUser user)
     {
         if (_quoteStorage.Aliases.ContainsKey(alias)) throw new DuplicateNameException("This alias already exists.");
-        
+
         _quoteStorage.Aliases.Add(alias, user.Id.ToString());
-        
+
         await FileHelper.SaveQuoteStorageAsync(_quoteStorage);
     }
-    
+
     public async Task RemoveAlias(string alias)
     {
         alias = alias.ToLower();
 
-        var toDelete = _quoteStorage.Aliases.Keys.Single(key => key.ToLower() == alias.ToLower());
-        
+        var toDelete = _quoteStorage.Aliases.Keys.Single(key => key.Equals(alias, StringComparison.CurrentCultureIgnoreCase));
+
         _quoteStorage.Aliases.Remove(toDelete);
-        
+
         await FileHelper.SaveQuoteStorageAsync(_quoteStorage);
     }
 
-    public string[] GetAliasKeyList()
-    {
-        return _quoteStorage.Aliases.Keys.ToArray();
-    }
+    public string[] GetAliasKeyList() => _quoteStorage.Aliases.Keys.ToArray();
 
-    public string[] GetKeyList(IIzzyGuild guild)
+    public string[] GetKeyList(IIzzyGuild guild) => _quoteStorage.Quotes.Keys.ToArray().Select(key =>
     {
-        return _quoteStorage.Quotes.Keys.ToArray().Select(key =>
+        var aliasText = "";
+        if (_quoteStorage.Aliases.ContainsValue(key))
         {
-            var aliasText = "";
-            if (_quoteStorage.Aliases.ContainsValue(key))
-            {
-                var aliases = _quoteStorage.Aliases.Where(alias => alias.Value == key).Select(alias => alias.Key);
-                aliasText = $"(aliases: {string.Join(", ", aliases)})";
-            }
+            var aliases = _quoteStorage.Aliases.Where(alias => alias.Value == key).Select(alias => alias.Key);
+            aliasText = $"(aliases: {string.Join(", ", aliases)})";
+        }
 
-            var id = ulong.Parse(key);
-            var potentialUser = guild.GetUser(id);
-            if (potentialUser == null)
-                return _users.TryGetValue(id, out var user) ? $"{id} ({user.Username}) {aliasText}" : $"{id} {aliasText}";
+        var id = ulong.Parse(key);
+        var potentialUser = guild.GetUser(id);
+        if (potentialUser == null)
+            return _users.TryGetValue(id, out var user) ? $"{id} ({user.Username}) {aliasText}" : $"{id} {aliasText}";
 
-            return $"{potentialUser.DisplayName} ({potentialUser.Username}/{potentialUser.Id}) {aliasText}";
-        }).ToArray();
-    }
+        return $"{potentialUser.DisplayName} ({potentialUser.Username}/{potentialUser.Id}) {aliasText}";
+    }).ToArray();
 
     public int? GetQuoteCount(ulong userId)
     {
@@ -103,23 +85,10 @@ public class QuoteService
     }
 
     public string? GetQuote(ulong userId, int index)
-    {
-        if (!_quoteStorage.Quotes.TryGetValue(userId.ToString(), out var quotes))
-            return null;
-
-        if (quotes.Count <= index)
-            return null;
-
-        return quotes[index];
-    }
+        => (_quoteStorage.Quotes.TryGetValue(userId.ToString(), out var quotes) && quotes.Count > index) ? quotes[index] : null;
 
     public List<string>? GetQuotes(ulong userId)
-    {
-        if (!_quoteStorage.Quotes.TryGetValue(userId.ToString(), out var quotes))
-            return null;
-
-        return quotes;
-    }
+        => _quoteStorage.Quotes.TryGetValue(userId.ToString(), out var quotes) ? quotes : null;
 
     public (ulong, int, string) GetRandomQuote()
     {
@@ -156,7 +125,7 @@ public class QuoteService
     {
         if (!_quoteStorage.Quotes.TryGetValue(user.Id.ToString(), out var quotes))
         {
-            quotes = new List<string>();
+            quotes = [];
             _quoteStorage.Quotes.Add(user.Id.ToString(), quotes);
         }
 
@@ -187,16 +156,9 @@ public class QuoteService
     }
 }
 
-public struct Quote
+public struct Quote(int id, string name, string content)
 {
-    public int Id;
-    public string Name;
-    public string Content;
-
-    public Quote(int id, string name, string content)
-    {
-        Id = id;
-        Name = name;
-        Content = content;
-    }
+    public int Id = id;
+    public string Name = name;
+    public string Content = content;
 }

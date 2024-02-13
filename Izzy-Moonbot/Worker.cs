@@ -1,10 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Threading;
-using System.Threading.Tasks;
 using Discord;
 using Discord.Commands;
 using Discord.Net;
@@ -21,7 +14,12 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
-using Serilog;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Izzy_Moonbot
 {
@@ -45,7 +43,7 @@ namespace Izzy_Moonbot
         private readonly UserListener _userListener;
         private readonly MessageListener _messageListener;
         private readonly MonitoringService _monitoringService;
-        private DiscordSocketClient _client;
+        private readonly DiscordSocketClient _client;
         public bool hasProgrammingSocks = true;
         public int LaserCount = 10;
 
@@ -60,8 +58,10 @@ namespace Izzy_Moonbot
             _raidService = raidService;
             _filterService = filterService;
             _scheduleService = scheduleService;
-            var commandServiceConfig = new CommandServiceConfig();
-            commandServiceConfig.CaseSensitiveCommands = false;
+            var commandServiceConfig = new CommandServiceConfig
+            {
+                CaseSensitiveCommands = false
+            };
             _commands = new CommandService(commandServiceConfig);
             _discordSettings = discordSettings.Value;
             _services = services;
@@ -75,7 +75,8 @@ namespace Izzy_Moonbot
             _messageListener = messageListener;
             _monitoringService = monitoringService;
 
-            var discordConfig = new DiscordSocketConfig {
+            var discordConfig = new DiscordSocketConfig
+            {
                 GatewayIntents = GatewayIntents.Guilds | GatewayIntents.GuildMembers | GatewayIntents.GuildMessages | GatewayIntents.DirectMessages | GatewayIntents.MessageContent,
                 MessageCacheSize = 50
             };
@@ -93,12 +94,12 @@ namespace Izzy_Moonbot
                 _client.Ready += ReadyEvent;
 
                 await _client.StartAsync();
-                
+
                 var filepath = FileHelper.SetUpFilepath(FilePathType.Root, "moderation", "log");
-                
+
                 if (!File.Exists(filepath))
                     await File.WriteAllTextAsync(filepath, $"----------= {DateTimeOffset.UtcNow:F} =----------\n", stoppingToken);
-                
+
                 await File.AppendAllTextAsync(filepath, $"----------= {DateTimeOffset.UtcNow:F} =----------\n", stoppingToken);
 
                 if (_config.DiscordActivityName != null)
@@ -122,19 +123,19 @@ namespace Izzy_Moonbot
 
                 _client.LatencyUpdated += async (int old, int value) =>
                 {
-                    #if DEBUG
+#if DEBUG
                     _logger.Log(LogLevel.Debug, $"Latency = {value}ms.");
-                    #endif
+#endif
 
                     if (_config.DiscordActivityName != null)
                     {
                         if (_client.Activity.Name != _config.DiscordActivityName ||
-                            _client.Activity.Type != (_config.DiscordActivityWatching ? ActivityType.Watching : ActivityType.Playing)) 
+                            _client.Activity.Type != (_config.DiscordActivityWatching ? ActivityType.Watching : ActivityType.Playing))
                             await _client.SetGameAsync(_config.DiscordActivityName, type: (_config.DiscordActivityWatching ? ActivityType.Watching : ActivityType.Playing));
                     }
                     else
                     {
-                        if (_client.Activity.Name != "") 
+                        if (_client.Activity.Name != "")
                             await _client.SetGameAsync("");
                     }
                 };
@@ -164,7 +165,7 @@ namespace Izzy_Moonbot
 
                 // Block this task until the program is closed.
                 await Task.Delay(-1, stoppingToken);
-                
+
                 while (!stoppingToken.IsCancellationRequested)
                 {
                     _logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
@@ -188,7 +189,8 @@ namespace Izzy_Moonbot
         // and they seem to get truncated on desktop at ~18-20.
         // There is also a hard limit of 5 context commands per app per guild, so this is it right here.
         private readonly string USERINFO_CMD_NAME = ".userinfo (ephemeral)";
-        private readonly string PERMANP_CMD_NAME =  ".permanp";
+
+        private readonly string PERMANP_CMD_NAME = ".permanp";
         private readonly string ADDQUOTE_CMD_NAME = ".addquote";
         private readonly string MOON_CMD_NAME = "moon";
         private readonly string UNMOON_CMD_NAME = "unmoon";
@@ -288,8 +290,9 @@ namespace Izzy_Moonbot
         }
 
         // hardcoding Manechat specific role ids
-        private ulong banishedRoleId = 368961099925553153;
-        private ulong memberRoleId = 552450130633031700;
+        private const ulong banishedRoleId = 368961099925553153;
+
+        private const ulong memberRoleId = 552450130633031700;
 
         private async Task MessageCommandHandler(SocketMessageCommand command)
         {
@@ -313,9 +316,8 @@ namespace Izzy_Moonbot
             else if (command.CommandName == MOON_CMD_NAME)
             {
                 string log = "MessageCommandHandler received invalid user object. Did nothing.";
-                if (command.Data.Message.Author is SocketGuildUser)
+                if (command.Data.Message.Author is SocketGuildUser member)
                 {
-                    var member = (SocketGuildUser)command.Data.Message.Author;
                     var alreadyHasRole = member.Roles.Select(role => role.Id).Contains(banishedRoleId);
                     if (alreadyHasRole)
                     {
@@ -325,7 +327,7 @@ namespace Izzy_Moonbot
                     else
                     {
                         log = $"message context command '{MOON_CMD_NAME}' used by `{command.User.Username}` ({command.User.Id}) on target user <@{member.Id}>";
-                        await _modService.AddRole(member, banishedRoleId, log);
+                        await ModService.AddRole(member, banishedRoleId, log);
                         await _modLog.CreateModLog(_client.GetGuild((ulong)guildId)).SetContent(log).SetFileLogContent(log).Send();
                     }
                 }
@@ -334,9 +336,8 @@ namespace Izzy_Moonbot
             else if (command.CommandName == WELCOME_CMD_NAME)
             {
                 string log = "MessageCommandHandler received invalid user object. Did nothing.";
-                if (command.Data.Message.Author is SocketGuildUser)
+                if (command.Data.Message.Author is SocketGuildUser member)
                 {
-                    var member = (SocketGuildUser)command.Data.Message.Author;
                     var alreadyHasRole = member.Roles.Select(role => role.Id).Contains(memberRoleId);
                     if (!alreadyHasRole)
                     {
@@ -346,7 +347,7 @@ namespace Izzy_Moonbot
                     else
                     {
                         log = $"message context command '{WELCOME_CMD_NAME}' used by `{command.User.Username}` ({command.User.Id}) on target user <@{member.Id}>";
-                        await _modService.RemoveRole(member, memberRoleId, log);
+                        await ModService.RemoveRole(member, memberRoleId, log);
                         await _modLog.CreateModLog(_client.GetGuild((ulong)guildId)).SetContent(log).SetFileLogContent(log).Send();
                     }
                 }
@@ -392,9 +393,8 @@ namespace Izzy_Moonbot
             else if (command.CommandName == MOON_CMD_NAME)
             {
                 string log = "UserCommandHandler received invalid user object. Did nothing.";
-                if (command.Data.Member is SocketGuildUser)
+                if (command.Data.Member is SocketGuildUser member)
                 {
-                    var member = (SocketGuildUser)command.Data.Member;
                     var alreadyHasRole = member.Roles.Select(role => role.Id).Contains(banishedRoleId);
                     if (alreadyHasRole)
                     {
@@ -404,7 +404,7 @@ namespace Izzy_Moonbot
                     else
                     {
                         log = $"user context command '{MOON_CMD_NAME}' used by `{command.User.Username}` ({command.User.Id}) on target user <@{member.Id}>";
-                        await _modService.AddRole(member, banishedRoleId, log);
+                        await ModService.AddRole(member, banishedRoleId, log);
                         await _modLog.CreateModLog(_client.GetGuild((ulong)guildId)).SetContent(log).SetFileLogContent(log).Send();
                     }
                 }
@@ -413,9 +413,8 @@ namespace Izzy_Moonbot
             else if (command.CommandName == UNMOON_CMD_NAME)
             {
                 string log = "UserCommandHandler received invalid user object. Did nothing.";
-                if (command.Data.Member is SocketGuildUser)
+                if (command.Data.Member is SocketGuildUser member)
                 {
-                    var member = (SocketGuildUser)command.Data.Member;
                     var alreadyHasRole = member.Roles.Select(role => role.Id).Contains(banishedRoleId);
                     if (!alreadyHasRole)
                     {
@@ -425,7 +424,7 @@ namespace Izzy_Moonbot
                     else
                     {
                         log = $"user context command '{UNMOON_CMD_NAME}' used by `{command.User.Username}` ({command.User.Id}) on target user <@{member.Id}>";
-                        await _modService.RemoveRole(member, banishedRoleId, log);
+                        await ModService.RemoveRole(member, banishedRoleId, log);
                         await _modLog.CreateModLog(_client.GetGuild((ulong)guildId)).SetContent(log).SetFileLogContent(log).Send();
                     }
                 }
@@ -434,9 +433,8 @@ namespace Izzy_Moonbot
             else if (command.CommandName == UNWELCOME_CMD_NAME)
             {
                 string log = "UserCommandHandler received invalid user object. Did nothing.";
-                if (command.Data.Member is SocketGuildUser)
+                if (command.Data.Member is SocketGuildUser member)
                 {
-                    var member = (SocketGuildUser)command.Data.Member;
                     var alreadyHasRole = member.Roles.Select(role => role.Id).Contains(memberRoleId);
                     if (alreadyHasRole)
                     {
@@ -446,7 +444,7 @@ namespace Izzy_Moonbot
                     else
                     {
                         log = $"user context command '{UNWELCOME_CMD_NAME}' used by `{command.User.Username}` ({command.User.Id}) on target user <@{member.Id}>";
-                        await _modService.AddRole(member, memberRoleId, log);
+                        await ModService.AddRole(member, memberRoleId, log);
                         await _modLog.CreateModLog(_client.GetGuild((ulong)guildId)).SetContent(log).SetFileLogContent(log).Send();
                     }
                 }
@@ -455,9 +453,8 @@ namespace Izzy_Moonbot
             else if (command.CommandName == WELCOME_CMD_NAME)
             {
                 string log = "UserCommandHandler received invalid user object. Did nothing.";
-                if (command.Data.Member is SocketGuildUser)
+                if (command.Data.Member is SocketGuildUser member)
                 {
-                    var member = (SocketGuildUser)command.Data.Member;
                     var alreadyHasRole = member.Roles.Select(role => role.Id).Contains(memberRoleId);
                     if (!alreadyHasRole)
                     {
@@ -467,7 +464,7 @@ namespace Izzy_Moonbot
                     else
                     {
                         log = $"user context command '{WELCOME_CMD_NAME}' used by `{command.User.Username}` ({command.User.Id}) on target user <@{member.Id}>";
-                        await _modService.RemoveRole(member, memberRoleId, log);
+                        await ModService.RemoveRole(member, memberRoleId, log);
                         await _modLog.CreateModLog(_client.GetGuild((ulong)guildId)).SetContent(log).SetFileLogContent(log).Send();
                     }
                 }
@@ -476,10 +473,8 @@ namespace Izzy_Moonbot
             else if (command.CommandName == TIMEOUT_24H_CMD_NAME)
             {
                 string log = "UserCommandHandler received invalid user object. Did nothing.";
-                if (command.Data.Member is SocketGuildUser)
+                if (command.Data.Member is SocketGuildUser member)
                 {
-                    SocketGuildUser member = (SocketGuildUser)command.Data.Member;
-
                     await member.SetTimeOutAsync(TimeSpan.FromHours(24));
 
                     log = $"user context command '{TIMEOUT_24H_CMD_NAME}' used by `{command.User.Username}` ({command.User.Id}) on target user <@{member.Id}>\n" +
@@ -487,7 +482,7 @@ namespace Izzy_Moonbot
                         $"Here's a userlog I unicycled that you can use if you want to!\n```\n" +
                         $"Type: Timeout (24 hours)\n" +
                         $"User: <@{member.Id}> ({member.Username}/{member.Id})\n" +
-                        $"Names: {(_users.ContainsKey(member.Id) ? string.Join(", ", _users[member.Id].Aliases) : "None (user isn't known by Izzy)")}\n" +
+                        $"Names: {(_users.TryGetValue(member.Id, out User? value) ? string.Join(", ", value.Aliases) : "None (user isn't known by Izzy)")}\n" +
                         $"```";
                     await _modLog.CreateModLog(_client.GetGuild((ulong)guildId)).SetContent(log).SetFileLogContent(log).Send();
                 }
@@ -500,7 +495,6 @@ namespace Izzy_Moonbot
                 await command.RespondAsync(log, ephemeral: true);
             }
         }
-
 
         private void ResyncUsers()
         {
@@ -536,7 +530,7 @@ namespace Izzy_Moonbot
 
                 // Get stowaways
                 var stowawaySet = new HashSet<SocketGuildUser>();
-        
+
                 await foreach (var socketGuildUser in guild.Users.ToAsyncEnumerable())
                 {
                     if (socketGuildUser.IsBot) continue; // Bots aren't stowaways
@@ -553,7 +547,7 @@ namespace Izzy_Moonbot
                 {
                     var stowawayStringList = stowawaySet.Select(user => $"<@{user.Id}>");
                     var stowawayStringFileList = stowawaySet.Select(user => $"{user.DisplayName} ({user.Username}/{user.Id})");
-                    
+
                     await _modLog.CreateModLog(guild)
                         .SetContent($"I found these stowaways after I rebooted, cannot tell if they're new users:\n" +
                                     string.Join(", ", stowawayStringList))
@@ -570,7 +564,7 @@ namespace Izzy_Moonbot
                 messageParam.Type != MessageType.ThreadStarterMessage) return;
             if (messageParam is not SocketUserMessage message) return;
             int argPos = 0;
-            SocketCommandContext context = new SocketCommandContext(_client, message);
+            SocketCommandContext context = new(_client, message);
 
             if (DevSettings.UseDevPrefix)
             {
@@ -624,28 +618,27 @@ namespace Izzy_Moonbot
                     return;
                 }
 
-
                 if (_config.Aliases.Count != 0)
                 {
                     var command = parsedMessage.Split(" ");
-                        
+
                     foreach (var keyValuePair in _config.Aliases)
                     {
-                        if (command[0].ToLower() != keyValuePair.Key.ToLower()) continue;
+                        if (!command[0].Equals(keyValuePair.Key, StringComparison.CurrentCultureIgnoreCase)) continue;
                         // Alias match
-                            
+
                         var commandAlias = keyValuePair.Value.StartsWith(_config.Prefix)
                             ? keyValuePair.Value[1..].TrimStart().Split(" ")[0]
                             : keyValuePair.Value.TrimStart().Split(" ")[0];
-                            
-                        if (_config.Aliases.Any(alias => alias.Key.ToLower() == commandAlias.ToLower()))
+
+                        if (_config.Aliases.Any(alias => alias.Key.Equals(commandAlias, StringComparison.CurrentCultureIgnoreCase)))
                         {
                             await context.Channel.SendMessageAsync(
                                 $"**Warning!** This alias directs to another alias!\nIzzy doesn't support aliases feeding into aliases. Please remove this alias or redirect it to an existing command.");
                             return;
                         }
 
-                        if (_commands.Commands.All(cmd => cmd.Name.ToLower() != commandAlias.ToLower()))
+                        if (_commands.Commands.All(cmd => !cmd.Name.Equals(commandAlias, StringComparison.CurrentCultureIgnoreCase)))
                         {
                             await context.Channel.SendMessageAsync(
                                 $"**Warning!** This alias directs to a non-existent command!\nPlease remove this alias or redirect it to an existing command.");
@@ -659,20 +652,20 @@ namespace Izzy_Moonbot
 
                     parsedMessage = string.Join(" ", command);
                 }
-                
+
                 var inputCommandName = parsedMessage.Split(" ")[0];
-                var validCommand = _commands.Commands.Any(command => 
-                    command.Name.ToLower() == inputCommandName.ToLower() || command.Aliases.Select(alias => alias.ToLower()).Contains(inputCommandName.ToLower()));
+                var validCommand = _commands.Commands.Any(command =>
+                    command.Name.Equals(inputCommandName, StringComparison.CurrentCultureIgnoreCase) || command.Aliases.Select(alias => alias.ToLower()).Contains(inputCommandName.ToLower()));
 
                 if (!validCommand)
                 {
                     var isDev = DiscordHelper.IsDev(context.User.Id);
                     var isMod = (context.User is SocketGuildUser guildUser) && (guildUser.Roles.Any(r => r.Id == _config.ModRole));
 
-                    Func<string, bool> isSuggestable = item =>
+                    bool isSuggestable(string item) =>
                         DiscordHelper.WithinLevenshteinDistanceOf(inputCommandName, item, Convert.ToUInt32(item.Length / 2));
 
-                    Func<CommandInfo, bool> canRunCommand = cinfo =>
+                    bool canRunCommand(CommandInfo cinfo)
                     {
                         var modAttr = cinfo.Preconditions.Any(attribute => attribute is ModCommandAttribute);
                         var devAttr = cinfo.Preconditions.Any(attribute => attribute is DevCommandAttribute);
@@ -680,12 +673,12 @@ namespace Izzy_Moonbot
                         else if (modAttr) return isMod;
                         else if (devAttr) return isDev;
                         else return true;
-                    };
-                    Func<string, bool> canRunCommandName = name =>
+                    }
+                    bool canRunCommandName(string name)
                     {
                         var cinfo = _commands.Commands.Where(c => c.Name == name).SingleOrDefault((CommandInfo?)null);
-                        return cinfo is null ? false : canRunCommand(cinfo);
-                    };
+                        return cinfo is not null && canRunCommand(cinfo);
+                    }
 
                     // don't bother searching command.Name because command.Aliases always includes the main name
                     var alternateNamesToSuggest = _commands.Commands.Where(canRunCommand)
@@ -707,7 +700,7 @@ namespace Izzy_Moonbot
                         return;
                     }
                 }
-                
+
                 var searchResult = _commands.Search(parsedMessage);
                 var commandToExec = searchResult.Commands[0].Command;
 

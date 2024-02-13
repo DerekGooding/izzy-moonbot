@@ -1,10 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Linq;
-using System.Reflection;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using Discord;
 using Discord.Commands;
 using Izzy_Moonbot.Adapters;
@@ -12,22 +5,20 @@ using Izzy_Moonbot.Attributes;
 using Izzy_Moonbot.Helpers;
 using Izzy_Moonbot.Service;
 using Izzy_Moonbot.Settings;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Reflection;
+using System.Threading.Tasks;
 
 namespace Izzy_Moonbot.Modules;
 
 [Summary("Commands for viewing and modifying quotes.")]
-public class QuotesModule : ModuleBase<SocketCommandContext>
+public class QuotesModule(Config config, QuoteService quoteService, Dictionary<ulong, User> users) : ModuleBase<SocketCommandContext>
 {
-    private readonly Config _config;
-    private readonly QuoteService _quoteService;
-    private readonly Dictionary<ulong, User> _users;
-
-    public QuotesModule(Config config, QuoteService quoteService, Dictionary<ulong, User> users)
-    {
-        _config = config;
-        _quoteService = quoteService;
-        _users = users;
-    }
+    private readonly Config _config = config;
+    private readonly QuoteService _quoteService = quoteService;
+    private readonly Dictionary<ulong, User> _users = users;
 
     private async Task<string> DisplayUserName(ulong userId, IIzzyClient client, IIzzyGuild guild)
     {
@@ -288,7 +279,7 @@ public class QuotesModule : ModuleBase<SocketCommandContext>
             return;
         }
 
-        if (content.StartsWith("\"") && content.EndsWith("\""))
+        if (content.StartsWith('\"') && content.EndsWith('\"'))
         {
             content = content[new Range(1, ^1)];
         }
@@ -362,9 +353,7 @@ public class QuotesModule : ModuleBase<SocketCommandContext>
         if (_quoteService.AliasExists(user))
         {
             var aliasUserId = _quoteService.ProcessAlias(user, context.Guild);
-            var quoteUser = context.Guild.GetUser(aliasUserId);
-            if (quoteUser == null)
-                throw new TargetException("The user this alias referenced to cannot be found.");
+            var quoteUser = context.Guild.GetUser(aliasUserId) ?? throw new TargetException("The user this alias referenced to cannot be found.");
 
             await _quoteService.RemoveQuote(quoteUser.Id, number.Value - 1);
 
@@ -419,9 +408,9 @@ public class QuotesModule : ModuleBase<SocketCommandContext>
         }
 
         var (alias, argsAfterSecond) = DiscordHelper.GetArgument(argsAfterFirst ?? "");
-        alias = alias ?? "";
+        alias ??= "";
 
-        if (operation.ToLower() == "list")
+        if (operation.Equals("list", StringComparison.CurrentCultureIgnoreCase))
         {
             var aliases = _quoteService.GetAliasKeyList();
 
@@ -432,7 +421,7 @@ public class QuotesModule : ModuleBase<SocketCommandContext>
                 $"Run `{_config.Prefix}quotealias set/add <alias> <user>` to create a new alias.\n" +
                 $"Run `{_config.Prefix}quotealias delete/remove <alias>` to delete an alias.", allowedMentions: AllowedMentions.None);
         }
-        else if (operation.ToLower() == "get")
+        else if (operation.Equals("get", StringComparison.CurrentCultureIgnoreCase))
         {
             if (alias == "")
             {
@@ -443,15 +432,13 @@ public class QuotesModule : ModuleBase<SocketCommandContext>
             if (_quoteService.AliasExists(alias))
             {
                 var aliasUserId = _quoteService.ProcessAlias(alias, context.Guild);
-                var user = context.Guild?.GetUser(aliasUserId);
-                if (user == null)
-                    throw new TargetException("The user this alias referenced to cannot be found.");
+                var user = (context.Guild?.GetUser(aliasUserId)) ?? throw new TargetException("The user this alias referenced to cannot be found.");
 
                 await context.Channel.SendMessageAsync(
                     $"Quote alias **{alias}** maps to user **{user.DisplayName}** ({user.Username}).", allowedMentions: AllowedMentions.None);
             }
         }
-        else if (operation.ToLower() == "set" || operation.ToLower() == "add")
+        else if (operation.Equals("set", StringComparison.CurrentCultureIgnoreCase) || operation.Equals("add", StringComparison.CurrentCultureIgnoreCase))
         {
             if (alias == "")
             {
@@ -481,7 +468,7 @@ public class QuotesModule : ModuleBase<SocketCommandContext>
 
             await context.Channel.SendMessageAsync($"Added alias **{alias}** to map to user **{userId}**.", allowedMentions: AllowedMentions.None);
         }
-        else if (operation.ToLower() == "delete" || operation.ToLower() == "remove")
+        else if (operation.Equals("delete", StringComparison.CurrentCultureIgnoreCase) || operation.Equals("remove", StringComparison.CurrentCultureIgnoreCase))
         {
             if (alias == "")
             {

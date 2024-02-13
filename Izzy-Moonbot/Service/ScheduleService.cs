@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Discord;
 using Flurl.Http;
 using Izzy_Moonbot.Adapters;
@@ -9,39 +5,31 @@ using Izzy_Moonbot.EventListeners;
 using Izzy_Moonbot.Helpers;
 using Izzy_Moonbot.Settings;
 using Microsoft.Extensions.Logging;
-using static Izzy_Moonbot.Settings.ScheduledJobRepeatType;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using static Izzy_Moonbot.Adapters.IIzzyClient;
+using static Izzy_Moonbot.Settings.ScheduledJobRepeatType;
 
 namespace Izzy_Moonbot.Service;
 
 /// <summary>
 /// Service responsible for the management and execution of scheduled tasks which need to be non-volatile.
 /// </summary>
-public class ScheduleService
+public class ScheduleService(Config config, ModService mod, ModLoggingService modLogging, LoggingService logger, List<ScheduledJob> scheduledJobs)
 {
-    private readonly Config _config;
-    private readonly LoggingService _logger;
-    private readonly ModService _mod;
-    private readonly ModLoggingService _modLogging;
+    private readonly Config _config = config;
+    private readonly LoggingService _logger = logger;
+    private readonly ModService _mod = mod;
+    private readonly ModLoggingService _modLogging = modLogging;
 
-    private readonly List<ScheduledJob> _scheduledJobs;
+    private readonly List<ScheduledJob> _scheduledJobs = scheduledJobs;
 
     private bool _alreadyInitiated;
     private Func<ScheduledEndRaidJob, IIzzyGuild, Task>? _endRaidCallback = null;
 
-    public ScheduleService(Config config, ModService mod, ModLoggingService modLogging, LoggingService logger, List<ScheduledJob> scheduledJobs)
-    {
-        _config = config;
-        _logger = logger;
-        _mod = mod;
-        _modLogging = modLogging;
-        _scheduledJobs = scheduledJobs;
-    }
-
     public void RegisterEvents(IIzzyClient client)
-    {
-        client.ButtonExecuted += async (component) => await DiscordHelper.LeakOrAwaitTask(ButtonEvent(component));
-    }
+        => client.ButtonExecuted += async (component) => await DiscordHelper.LeakOrAwaitTask(ButtonEvent(component));
 
     public void RegisterEndRaidCallback(Func<ScheduledEndRaidJob, IIzzyGuild, Task>? callback) => _endRaidCallback = callback;
 
@@ -58,7 +46,7 @@ public class ScheduleService
         Task.Run(async () =>
         {
             await Task.Delay(_config.UnicycleInterval);
-            
+
             // Run unicycle.
             try
             {
@@ -101,24 +89,31 @@ public class ScheduleService
                     case ScheduledRoleRemovalJob roleRemovalJob:
                         await Unicycle_RemoveRole(roleRemovalJob, defaultGuild, job.ExecuteAt);
                         break;
+
                     case ScheduledRoleAdditionJob roleAdditionJob:
                         await Unicycle_AddRole(roleAdditionJob, defaultGuild, job.ExecuteAt);
                         break;
+
                     case ScheduledUnbanJob unbanJob:
                         await Unicycle_Unban(unbanJob, defaultGuild, client, job.ExecuteAt);
                         break;
+
                     case ScheduledEchoJob echoJob:
                         await Unicycle_Echo(echoJob, defaultGuild, client, job.RepeatType, job.Id, job.ExecuteAt);
                         break;
+
                     case ScheduledBannerRotationJob bannerRotationJob:
                         await Unicycle_BannerRotation(bannerRotationJob, defaultGuild, client);
                         break;
+
                     case ScheduledBoredCommandsJob boredCommandsJob:
                         await Unicycle_BoredCommands(boredCommandsJob, defaultGuild, client);
                         break;
+
                     case ScheduledEndRaidJob endRaidJob:
                         await Unicycle_EndRaid(endRaidJob, defaultGuild, client);
                         break;
+
                     default:
                         throw new NotSupportedException($"{job.Action.GetType().Name} is currently not supported.");
                 }
@@ -145,29 +140,17 @@ public class ScheduleService
         }
     }
 
-    public ScheduledJob? GetScheduledJob(string id)
-    {
-        return _scheduledJobs.SingleOrDefault(job => job.Id == id);
-    }
+    public ScheduledJob? GetScheduledJob(string id) => _scheduledJobs.SingleOrDefault(job => job.Id == id);
 
-    public ScheduledJob? GetScheduledJob(Func<ScheduledJob, bool> predicate)
-    {
-        return _scheduledJobs.SingleOrDefault(predicate);
-    }
-    
-    public List<ScheduledJob> GetScheduledJobs()
-    {
-        return _scheduledJobs.ToList();
-    }
+    public ScheduledJob? GetScheduledJob(Func<ScheduledJob, bool> predicate) => _scheduledJobs.SingleOrDefault(predicate);
 
-    public List<ScheduledJob> GetScheduledJobs(Func<ScheduledJob, bool> predicate)
-    {
-        return _scheduledJobs.Where(predicate).ToList();
-    }
+    public List<ScheduledJob> GetScheduledJobs() => _scheduledJobs;
+
+    public List<ScheduledJob> GetScheduledJobs(Func<ScheduledJob, bool> predicate) => _scheduledJobs.Where(predicate).ToList();
 
     public async Task CreateScheduledJob(ScheduledJob job)
     {
-        if (job.RepeatType == ScheduledJobRepeatType.Relative && (job.LastExecutedAt ?? job.CreatedAt) >= job.ExecuteAt)
+        if (job.RepeatType == Relative && (job.LastExecutedAt ?? job.CreatedAt) >= job.ExecuteAt)
             throw new ArgumentException($"CreateScheduledJob() was passed a relative repeating job with non-positive interval: {job.ToDiscordString()}");
 
         _scheduledJobs.Add(job);
@@ -176,7 +159,7 @@ public class ScheduleService
 
     public async Task ModifyScheduledJob(string id, ScheduledJob job)
     {
-        if (job.RepeatType == ScheduledJobRepeatType.Relative && (job.LastExecutedAt ?? job.CreatedAt) >= job.ExecuteAt)
+        if (job.RepeatType == Relative && (job.LastExecutedAt ?? job.CreatedAt) >= job.ExecuteAt)
             throw new ArgumentException($"ModifyScheduledJob() was passed a relative repeating job with non-positive interval: {job.ToDiscordString()}");
 
         _scheduledJobs[_scheduledJobs.IndexOf(_scheduledJobs.First(altJob => altJob.Id == id))] = job;
@@ -197,7 +180,7 @@ public class ScheduleService
         {
             // Modify job to allow repeatability.
             var taskIndex = _scheduledJobs.FindIndex(scheduledJob => scheduledJob.Id == job.Id);
-            
+
             // Get LastExecutedAt, or CreatedAt if former is null as well as the execution time.
             var creationAt = job.LastExecutedAt ?? job.CreatedAt;
             var executeAt = job.ExecuteAt;
@@ -208,27 +191,30 @@ public class ScheduleService
                 case Relative:
                     // Get the offset.
                     var repeatEvery = executeAt - creationAt;
-            
+
                     // Get the timestamp of next execution.
                     var nextExecuteAt = executeAt + repeatEvery;
                     while (nextExecuteAt <= DateTimeHelper.UtcNow) nextExecuteAt += repeatEvery;
-            
+
                     // Set previous execution time and new execution time
                     job.LastExecutedAt = executeAt;
                     job.ExecuteAt = nextExecuteAt;
                     break;
+
                 case Daily:
                     // Just add a single day to the execute at time lol
                     job.LastExecutedAt = executeAt;
                     job.ExecuteAt = executeAt.AddDays(1);
                     while (job.ExecuteAt <= DateTimeHelper.UtcNow) job.ExecuteAt.AddDays(1);
                     break;
+
                 case Weekly:
                     // Add 7 days to the execute at time
                     job.LastExecutedAt = executeAt;
                     job.ExecuteAt = executeAt.AddDays(7);
                     while (job.ExecuteAt <= DateTimeHelper.UtcNow) job.ExecuteAt.AddDays(7);
                     break;
+
                 case Yearly:
                     // Add a year to the execute at time
                     job.LastExecutedAt = executeAt;
@@ -246,7 +232,7 @@ public class ScheduleService
 
         await DeleteScheduledJob(job);
     }
-    
+
     // Executors for different types.
     private async Task Unicycle_AddRole(ScheduledRoleAdditionJob job, IIzzyGuild guild, DateTimeOffset executeAt)
     {
@@ -267,7 +253,7 @@ public class ScheduleService
         }
 
         var reason = job.Reason;
-        
+
         _logger.Log(
             $"Adding {role.Name} ({role.Id}) to {user.DisplayName} ({user.Username}/{user.Id})", level: LogLevel.Debug);
 
@@ -276,14 +262,14 @@ public class ScheduleService
         if ((DateTimeHelper.UtcNow - executeAt).TotalDays > 1)
             modMessage = TimeTravelWarning(executeAt) + "\n\n" + modMessage;
 
-        await _mod.AddRole(user, role.Id, reason);
+        await ModService.AddRole(user, role.Id, reason);
         await _modLogging.CreateModLog(guild)
             .SetContent(modMessage)
             .SetFileLogContent(
                 $"Gave {role.Name} ({role.Id}) to {user.DisplayName} ({user.Username}/{user.Id}). {(reason != null ? $"Reason: {reason}." : "")}")
             .Send();
     }
-    
+
     private async Task Unicycle_RemoveRole(ScheduledRoleRemovalJob job, IIzzyGuild guild, DateTimeOffset executeAt)
     {
         var role = guild.GetRole(job.Role);
@@ -303,7 +289,7 @@ public class ScheduleService
         }
 
         string? reason = job.Reason;
-        
+
         _logger.Log(
             $"Removing {role.Name} ({role.Id}) from {user.DisplayName} ({user.Username}/{user.Id})", level: LogLevel.Debug);
 
@@ -312,7 +298,7 @@ public class ScheduleService
         if ((DateTimeHelper.UtcNow - executeAt).TotalDays > 1)
             modMessage = TimeTravelWarning(executeAt) + "\n\n" + modMessage;
 
-        await _mod.RemoveRole(user, role.Id, reason);
+        await ModService.RemoveRole(user, role.Id, reason);
         await _modLogging.CreateModLog(guild)
             .SetContent(modMessage)
             .SetFileLogContent(
@@ -325,7 +311,7 @@ public class ScheduleService
         if (!await guild.GetIsBannedAsync(job.User)) return;
 
         var user = await client.GetUserAsync(job.User);
-        
+
         _logger.Log(
             $"Unbanning {(user == null ? job.User : $"")}.",
             level: LogLevel.Debug);
@@ -349,7 +335,7 @@ public class ScheduleService
         await modLog.Send();
     }
 
-    private async Task Unicycle_Echo(ScheduledEchoJob job, IIzzyGuild guild, IIzzyClient client, ScheduledJobRepeatType repeatType, string jobId, DateTimeOffset executeAt)
+    private static async Task Unicycle_Echo(ScheduledEchoJob job, IIzzyGuild guild, IIzzyClient client, ScheduledJobRepeatType repeatType, string jobId, DateTimeOffset executeAt)
     {
         if (job.Content == "") return;
 
@@ -378,7 +364,8 @@ public class ScheduleService
     public async Task Unicycle_BannerRotation(ScheduledBannerRotationJob job, IIzzyGuild guild,
         IIzzyClient client)
     {
-        if (_config.BannerMode == ConfigListener.BannerMode.None) {
+        if (_config.BannerMode == ConfigListener.BannerMode.None)
+        {
             _logger.Log("Unicycle_BannerRotation early returning because BannerMode is None.");
             return;
         }
@@ -573,7 +560,7 @@ public class ScheduleService
         await _endRaidCallback(job, guild);
     }
 
-    private string TimeTravelWarning(DateTimeOffset intendedExecutionTime)
+    private static string TimeTravelWarning(DateTimeOffset intendedExecutionTime)
     {
         return $":warning: Oopsie! <:izzynothoughtsheadempty:910198222255972382> I was supposed to do this " +
             $"<t:{intendedExecutionTime.ToUnixTimeSeconds()}:R> but didn't see it in my todo list until just now. " +

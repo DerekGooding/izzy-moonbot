@@ -1,17 +1,17 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Izzy_Moonbot.Adapters;
-using Izzy_Moonbot.Helpers;
-using Izzy_Moonbot.Settings;
-using Izzy_Moonbot.Service;
-using Izzy_Moonbot.Modules;
-using Izzy_Moonbot;
-using Izzy_Moonbot_Tests.Services;
 using Discord.Commands;
+using Izzy_Moonbot;
+using Izzy_Moonbot.Adapters;
 using Izzy_Moonbot.Attributes;
 using Izzy_Moonbot.Describers;
 using Izzy_Moonbot.EventListeners;
+using Izzy_Moonbot.Helpers;
+using Izzy_Moonbot.Modules;
+using Izzy_Moonbot.Service;
+using Izzy_Moonbot.Settings;
+using Izzy_Moonbot_Tests.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Reflection;
 
 namespace Izzy_Moonbot_Tests.Modules;
@@ -60,10 +60,10 @@ public class MiscModuleTests
         return commands;
     }
 
-    public async Task<(ScheduleService, MiscModule)> SetupMiscModule(Config cfg)
+    public static async Task<(ScheduleService, MiscModule)> SetupMiscModule(Config cfg)
     {
         var scheduledJobs = new List<ScheduledJob>();
-        var mod = new ModService(cfg, new Dictionary<ulong, User>());
+        var mod = new ModService(cfg, []);
         var modLog = new ModLoggingService(cfg);
         var logger = new LoggingService(new TestLogger<Worker>());
         var ss = new ScheduleService(cfg, mod, modLog, logger, scheduledJobs);
@@ -377,7 +377,7 @@ public class MiscModuleTests
     [TestMethod()]
     public async Task HelpCommand_RegularUsers_ListingCommands_Async()
     {
-        var (cfg, _, (_, sunny), roles, (generalChannel, _, _), guild, client) = TestUtils.DefaultStubs();
+        var (cfg, _, (_, _), roles, (generalChannel, _, _), guild, client) = TestUtils.DefaultStubs();
         var (_, mm) = await SetupMiscModule(cfg);
 
         cfg.ModRole = roles[0].Id; // Sunny is a moderator

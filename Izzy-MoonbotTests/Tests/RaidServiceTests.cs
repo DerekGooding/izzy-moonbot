@@ -1,9 +1,8 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Izzy_Moonbot.Settings;
-using Izzy_Moonbot.Service;
-using Izzy_Moonbot.Helpers;
 using Izzy_Moonbot;
-using Izzy_Moonbot.Adapters;
+using Izzy_Moonbot.Helpers;
+using Izzy_Moonbot.Service;
+using Izzy_Moonbot.Settings;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Izzy_Moonbot_Tests.Services;
 

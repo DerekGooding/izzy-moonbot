@@ -1,29 +1,20 @@
-using System;
-using System.Linq;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using Discord;
 using Izzy_Moonbot.Adapters;
 using Izzy_Moonbot.Helpers;
 using Izzy_Moonbot.Service;
 using Izzy_Moonbot.Settings;
+using System.Linq;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace Izzy_Moonbot.EventListeners;
 
-public class MessageListener
+public class MessageListener(LoggingService logger, Config config, ModLoggingService modLogger, TransientState state)
 {
-    private readonly LoggingService _logger;
-    private readonly Config _config;
-    private readonly ModLoggingService _modLogger;
-    private readonly TransientState _state;
-
-    public MessageListener(LoggingService logger, Config config, ModLoggingService modLogger, TransientState state)
-    {
-        _logger = logger;
-        _config = config;
-        _modLogger = modLogger;
-        _state = state;
-    }
+    private readonly LoggingService _logger = logger;
+    private readonly Config _config = config;
+    private readonly ModLoggingService _modLogger = modLogger;
+    private readonly TransientState _state = state;
 
     public void RegisterEvents(IIzzyClient client)
     {
@@ -55,7 +46,8 @@ public class MessageListener
             !(message.Content.StartsWith($"{_config.Prefix}{_config.Prefix}"))
         ) return;
 
-        var match = _config.Witties.FirstOrDefault(pair => {
+        var match = _config.Witties.FirstOrDefault(pair =>
+        {
             var pattern = pair.Key;
 
             // our use of regex here is an implementation detail, do not expose any regex syntax to the users
@@ -91,9 +83,9 @@ public class MessageListener
         if (match.Value.Contains('|'))
         {
             var responses = match.Value.Split('|');
-            var responseIndex = new Random().Next(responses.Count());
+            var responseIndex = new Random().Next(responses.Length);
             response = responses[responseIndex];
-            _logger.Log($"Witty response contained {responses.Count()} |-delimited responses. Chose response {responseIndex} at random: \"{response}\"");
+            _logger.Log($"Witty response contained {responses.Length} |-delimited responses. Chose response {responseIndex} at random: \"{response}\"");
         }
         _logger.Log($"Posting witty response \"{response}\" in {message.Channel.Name}");
         await message.Channel.SendMessageAsync(response);
@@ -144,20 +136,21 @@ public class MessageListener
         var oldLength = oldContent?.Length ?? 0;
         var newContent = newMessage.Content;
         var truncationWarning = "";
-        if (logMessageTemplate.Length + oldLength + newContent.Length > DiscordHelper.MessageLengthLimit) {
+        if (logMessageTemplate.Length + oldLength + newContent.Length > DiscordHelper.MessageLengthLimit)
+        {
             truncationWarning = "⚠️ The message needed to be truncated\n";
             var spaceForMessages = DiscordHelper.MessageLengthLimit - logMessageTemplate.Length - truncationWarning.Length;
             var truncationMarker = "\n[...]\n";
             var spaceForHalfMessage = ((spaceForMessages / 2) - truncationMarker.Length) / 2;
 
             if (oldContent != null)
-                oldContent = oldContent.Substring(0, spaceForHalfMessage) +
+                oldContent = oldContent[..spaceForHalfMessage] +
                     truncationMarker +
-                    oldContent.Substring(oldLength - spaceForHalfMessage);
+                    oldContent[(oldLength - spaceForHalfMessage)..];
 
-            newContent = newContent.Substring(0, spaceForHalfMessage) +
+            newContent = newContent[..spaceForHalfMessage] +
                 truncationMarker +
-                newContent.Substring(newContent.Length - spaceForHalfMessage);
+                newContent[^spaceForHalfMessage..];
         }
 
         var logMessage = logMessageTemplate.Replace("{warn}", truncationWarning).Replace("{old}", oldContent).Replace("{new}", newContent);
@@ -200,7 +193,7 @@ public class MessageListener
         logMessageTemplate += "{warn}";
 
         var attachmentUrls = "";
-        if (message.Attachments?.Any() ?? false)
+        if (message.Attachments?.Count == 0)
         {
             logMessageTemplate += "__Content__:\n{content}\n__Attachments__:\n{attachments}";
             attachmentUrls = string.Join('\n', message.Attachments.Select(a => a.ProxyUrl));
@@ -217,13 +210,11 @@ public class MessageListener
             var truncationMarker = "\n[...]\n";
 
             var spaceForHalfContent = ((int)Math.Floor(spaceForMessages * 0.9) - truncationMarker.Length) / 2;
-            content = content.Substring(0, spaceForHalfContent) +
-                truncationMarker +
-                content.Substring(content.Length - spaceForHalfContent);
+            content = string.Concat(content.AsSpan(0, spaceForHalfContent), truncationMarker, content.AsSpan(content.Length - spaceForHalfContent));
 
             var spaceForAttachments = (int)Math.Floor(spaceForMessages * 0.1);
             if (attachmentUrls.Length > spaceForAttachments)
-                attachmentUrls = attachmentUrls.Substring(0, spaceForAttachments) + truncationMarker;
+                attachmentUrls = attachmentUrls[..spaceForAttachments] + truncationMarker;
         }
 
         var logMessage = logMessageTemplate.Replace("{warn}", truncationWarning).Replace("{content}", content).Replace("{attachments}", attachmentUrls);

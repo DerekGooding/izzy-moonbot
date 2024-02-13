@@ -411,5 +411,4 @@ public class SpamServiceTests
             ("Breakdown of last message", "**Test string**"),
         ]);
     }
-
 }

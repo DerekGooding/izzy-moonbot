@@ -1,4 +1,4 @@
-﻿using Izzy_Moonbot.Helpers;
+using Izzy_Moonbot.Helpers;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Izzy_Moonbot_Tests.Helpers;

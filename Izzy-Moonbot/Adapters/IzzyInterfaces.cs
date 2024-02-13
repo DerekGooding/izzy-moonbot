@@ -1,5 +1,4 @@
 using Discord;
-using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -23,8 +22,11 @@ public interface IIzzyGuildUser : IIzzyUser
     DateTimeOffset? JoinedAt { get; }
 
     Task AddRoleAsync(ulong roleId, RequestOptions? requestOptions);
+
     Task AddRolesAsync(IEnumerable<ulong> roles, RequestOptions? requestOptions);
+
     Task RemoveRoleAsync(ulong memberRole, RequestOptions? requestOptions);
+
     Task SetTimeOutAsync(TimeSpan span, RequestOptions? requestOptions);
 }
 
@@ -60,9 +62,11 @@ public interface IIzzyMessage
 
     // all we ever do with these is attach them to an embed, so no point properly faking them
     DateTimeOffset CreatedAt { get; }
+
     DateTimeOffset Timestamp { get; }
 
     Task DeleteAsync();
+
     string GetJumpUrl();
 }
 
@@ -75,7 +79,9 @@ public interface IIzzyMessageChannel
 {
     ulong Id { get; }
     string Name { get; }
+
     Task<IIzzyUser?> GetUserAsync(ulong userId);
+
     Task<IIzzyUserMessage> SendMessageAsync(
         string message,
         AllowedMentions? allowedMentions = null,
@@ -83,7 +89,9 @@ public interface IIzzyMessageChannel
         RequestOptions? options = null,
         ISticker[]? stickers = null
     );
+
     Task<IIzzyUserMessage> SendFileAsync(FileAttachment fa, string message);
+
     ChannelType? GetChannelType();
 }
 
@@ -92,6 +100,7 @@ public interface IIzzySocketTextChannel
     ulong Id { get; }
     string Name { get; }
     IReadOnlyCollection<IIzzyUser> Users { get; }
+
     Task<IIzzyUserMessage> SendMessageAsync(
         string message,
         AllowedMentions? allowedMentions = null,
@@ -100,9 +109,13 @@ public interface IIzzySocketTextChannel
         ISticker[]? stickers = null,
         Embed[]? embeds = null
     );
+
     Task<IIzzyMessage?> GetMessageAsync(ulong messageId);
+
     Task<IIzzyUserMessage> SendFileAsync(FileAttachment fa, string message);
+
     IAsyncEnumerable<IReadOnlyCollection<IIzzyMessage>> GetMessagesAsync(ulong firstMessageId, Direction dir, int limit);
+
     IAsyncEnumerable<IReadOnlyCollection<IIzzyMessage>> GetMessagesAsync(int messageCount);
 }
 
@@ -116,32 +129,45 @@ public interface IIzzyGuild
 {
     ulong Id { get; }
     string Name { get; }
+
     Task<IReadOnlyCollection<IIzzyUser>> SearchUsersAsync(string userSearchQuery);
+
     IReadOnlyCollection<IIzzySocketTextChannel> TextChannels { get; }
     IReadOnlyCollection<IIzzyRole> Roles { get; }
+
     IIzzyGuildUser? GetUser(ulong userId);
+
     IIzzyRole? GetRole(ulong roleId);
+
     IIzzySocketGuildChannel? GetChannel(ulong channelId);
+
     IIzzySocketTextChannel? GetTextChannel(ulong channelId);
+
     Task AddBanAsync(ulong userId, int pruneDays, string reason);
+
     Task<bool> GetIsBannedAsync(ulong userId); // replaces the real GetBanAsync method
+
     Task RemoveBanAsync(ulong userId, string? reason);
+
     Task SetBanner(Image image); // replaces the real ModifyAsync(props => ...) method
+
     IIzzySocketTextChannel? RulesChannel { get; }
 }
 
-public interface IIzzyHasId { ulong Id { get; } }
-public class IdHaver : IIzzyHasId
+public interface IIzzyHasId
+{ ulong Id { get; } }
+
+public class IdHaver(ulong id) : IIzzyHasId
 {
-    public ulong Id { get; }
-    public IdHaver(ulong id) => Id = id;
+    public ulong Id { get; } = id;
 }
 
-public interface IIzzyHasCustomId { string CustomId { get; } }
-public class CustomIdHaver : IIzzyHasCustomId
+public interface IIzzyHasCustomId
+{ string CustomId { get; } }
+
+public class CustomIdHaver(string id) : IIzzyHasCustomId
 {
-    public string CustomId { get; }
-    public CustomIdHaver(string id) => CustomId = id;
+    public string CustomId { get; } = id;
 }
 
 public interface IIzzyClient
@@ -153,21 +179,29 @@ public interface IIzzyClient
 
     event Func<string?, IIzzyMessage, IIzzyMessageChannel, Task> MessageUpdated;
 
-    public interface IIzzySocketMessageComponent {
+    public interface IIzzySocketMessageComponent
+    {
         IIzzyHasId User { get; }
         IIzzyHasId Message { get; }
         IIzzyHasCustomId Data { get; }
+
         Task UpdateAsync(Action<IIzzyMessageProperties> action);
+
         Task DeferAsync();
     }
+
     event Func<IIzzySocketMessageComponent, Task> ButtonExecuted;
 
     event Func<ulong, IIzzyMessage?, ulong, IIzzyMessageChannel?, Task>? MessageDeleted;
+
     event Func<IIzzyGuildUser, Task> UserJoined;
 
     IIzzyContext MakeContext(IIzzyUserMessage message);
+
     Task<IIzzyUser?> GetUserAsync(ulong userId);
+
     IIzzyGuild? GetGuild(ulong v);
+
     Task SendDirectMessageAsync(ulong userId, string text, MessageComponent? components = null);
 }
 
@@ -180,4 +214,3 @@ public interface IIzzyContext
     IIzzyUserMessage Message { get; }
     IIzzyUser User { get; } // note: runtime type must be IIzzyGuildUser whenever possible
 }
-

@@ -1,8 +1,8 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Izzy_Moonbot.Settings;
-using Izzy_Moonbot.Service;
-using Izzy_Moonbot.Helpers;
 using Izzy_Moonbot;
+using Izzy_Moonbot.Helpers;
+using Izzy_Moonbot.Service;
+using Izzy_Moonbot.Settings;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Izzy_Moonbot_Tests.Services;
 
@@ -218,7 +218,6 @@ public class ScheduleServiceTests
         Assert.AreEqual(1, generalChannel.Messages.Count);
         Assert.AreEqual("test echo", generalChannel.Messages.Last().Content);
 
-
         // nothing happens on Oct 9th 2012
         DateTimeHelper.FakeUtcNow = new DateTimeOffset(2012, 10, 9, 0, 0, 0, TimeSpan.Zero);
         await ss.Unicycle(client);
@@ -231,7 +230,6 @@ public class ScheduleServiceTests
         await ss.Unicycle(client);
         Assert.AreEqual(2, generalChannel.Messages.Count);
         Assert.AreEqual("test echo", generalChannel.Messages.Last().Content);
-
 
         // nothing happens on Oct 9th 2013
         DateTimeHelper.FakeUtcNow = new DateTimeOffset(2013, 10, 9, 0, 0, 0, TimeSpan.Zero);

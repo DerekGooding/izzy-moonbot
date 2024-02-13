@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Discord;
 using Discord.Rest;
 using Discord.WebSocket;
@@ -9,30 +5,23 @@ using Izzy_Moonbot.Helpers;
 using Izzy_Moonbot.Service;
 using Izzy_Moonbot.Settings;
 using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Izzy_Moonbot.EventListeners;
 
-public class UserListener
+public class UserListener(LoggingService logger, Dictionary<ulong, User> users, ModLoggingService modLogger, ModService mod, ScheduleService schedule, Config config)
 {
     // This listener handles listening to user related events (join, leave, etc)
     // This is mostly used for logging and constructing user settings
-    
-    private readonly LoggingService _logger;
-    private readonly Dictionary<ulong, User> _users;
-    private readonly ModLoggingService _modLogger;
-    private readonly ModService _mod;
-    private readonly ScheduleService _schedule;
-    private readonly Config _config;
-    
-    public UserListener(LoggingService logger, Dictionary<ulong, User> users, ModLoggingService modLogger, ModService mod, ScheduleService schedule, Config config)
-    {
-        _logger = logger;
-        _users = users;
-        _modLogger = modLogger;
-        _mod = mod;
-        _schedule = schedule;
-        _config = config;
-    }
+
+    private readonly LoggingService _logger = logger;
+    private readonly Dictionary<ulong, User> _users = users;
+    private readonly ModLoggingService _modLogger = modLogger;
+    private readonly ModService _mod = mod;
+    private readonly ScheduleService _schedule = schedule;
+    private readonly Config _config = config;
 
     public void RegisterEvents(DiscordSocketClient client)
     {
@@ -45,15 +34,16 @@ public class UserListener
     public async Task MemberUnbanEvent(SocketUser user, SocketGuild guild)
     {
         if (guild.Id != DiscordHelper.DefaultGuild()) return;
-        
-        var scheduledJobs = _schedule.GetScheduledJobs(job => 
+        _config.RolesToReapplyOnRejoin.Clear();
+
+        var scheduledJobs = _schedule.GetScheduledJobs(job =>
             job.Action switch
             {
                 ScheduledUnbanJob unbanJob => unbanJob.User == user.Id,
                 _ => false
             }
         );
-        _logger.Log($"User was unbanned: {user.Username} ({user.Id}).{(scheduledJobs.Any() ? $" Cancelling {scheduledJobs.Count} scheduled unban job(s) for this user." : "")}");
+        _logger.Log($"User was unbanned: {user.Username} ({user.Id}).{(scheduledJobs.Count != 0 ? $" Cancelling {scheduledJobs.Count} scheduled unban job(s) for this user." : "")}");
         foreach (var scheduledJob in scheduledJobs)
             await _schedule.DeleteScheduledJob(scheduledJob);
     }
@@ -66,7 +56,7 @@ public class UserListener
         bool configChanged = false;
 
         User userInfo;
-        if (!_users.ContainsKey(member.Id))
+        if (!_users.TryGetValue(member.Id, out User? value))
         {
             userInfo = new User();
             _users.Add(member.Id, userInfo);
@@ -74,10 +64,10 @@ public class UserListener
         }
         else
         {
-            userInfo = _users[member.Id];
+            userInfo = value;
         }
 
-        bool changed = UserHelper.updateUserInfoFromDiscord(userInfo, member, _config);
+        bool changed = UserHelper.UpdateUserInfoFromDiscord(userInfo, member, _config);
         if (changed) userInfoChanged = true;
 
         var result = await UserHelper.applyJoinRolesToUser(userInfo, member, _config, _mod, _schedule);
@@ -97,7 +87,7 @@ public class UserListener
         if (_users[member.Id].Joins.Count <= 1) joinedBefore = "";
 
         var rolesReappliedString = "";
-        var reappliedRoles = result.rolesAdded.Where(r => _config.RolesToReapplyOnRejoin.Contains(r)).ToHashSet();
+        var reappliedRoles = result.rolesAdded.Where(_config.RolesToReapplyOnRejoin.Contains).ToHashSet();
         if (reappliedRoles.Count > 0)
             rolesReappliedString = $", Reapplied roles (from `RolesToReapplyOnRejoin`): {string.Join(", ", reappliedRoles.Select(r => $"<&{r}>"))}";
 
@@ -108,11 +98,11 @@ public class UserListener
             .SetFileLogContent(msg)
             .Send();
     }
-    
+
     private async Task MemberLeaveEvent(SocketGuild guild, SocketUser user)
     {
         if (guild.Id != DiscordHelper.DefaultGuild()) return;
-        
+
         _logger.Log($"Member leaving: {DiscordHelper.DisplayName(user, guild)} ({user.Username}/{user.Id})");
         var lastNickname = "";
         try
@@ -140,7 +130,7 @@ public class UserListener
                         return audit;
                 }
                 return null;
-            }).Where(audit => audit != null).FirstOrDefault();
+            }).FirstOrDefault(audit => audit != null);
 
         var banAuditLog = guild.GetAuditLogsAsync(5, actionType: ActionType.Ban).FirstAsync()
             .GetAwaiter().GetResult()
@@ -153,7 +143,7 @@ public class UserListener
                         return audit;
                 }
                 return null;
-            }).Where(audit => audit != null).FirstOrDefault();
+            }).FirstOrDefault(audit => audit != null);
 
         var output = $"Leave: {lastNickname} (`{user.Username}`/`{user.Id}`) joined <t:{_users[user.Id].Joins.Last().ToUnixTimeSeconds()}:R>";
 
@@ -206,7 +196,7 @@ public class UserListener
                 _ => false
             }
         );
-        if (repeatingJobsForUser.Any())
+        if (repeatingJobsForUser.Count != 0)
             output += $"\n\nCancelled the following repeating scheduled job(s) for that user:";
         foreach (var job in repeatingJobsForUser)
         {
@@ -218,40 +208,42 @@ public class UserListener
         await _modLogger.CreateModLog(guild).SetContent(output).SetFileLogContent(output).Send();
     }
 
-    private async Task MemberUpdateEvent(Cacheable<SocketGuildUser,ulong> oldUser, SocketGuildUser newUser)
+    private async Task MemberUpdateEvent(Cacheable<SocketGuildUser, ulong> _, SocketGuildUser newUser)
     {
         if (newUser.Guild.Id != DiscordHelper.DefaultGuild()) return;
 
         var changed = false;
-        
-        if (!_users.ContainsKey(newUser.Id))
+
+        if (!_users.TryGetValue(newUser.Id, out User? value))
         {
             changed = true;
             _logger.Log($"{newUser.DisplayName} ({newUser.Username}/{newUser.Id}) has no metadata, creating now...", level: LogLevel.Debug);
-            var newUserData = new User();
-            newUserData.Username = $"{newUser.Username}#{newUser.Discriminator}";
+            User newUserData = new()
+            {
+                Username = $"{newUser.Username}#{newUser.Discriminator}"
+            };
             newUserData.Aliases.Add(newUser.Username);
-            if(newUser.JoinedAt.HasValue) newUserData.Joins.Add(newUser.JoinedAt.Value);
+            if (newUser.JoinedAt.HasValue) newUserData.Joins.Add(newUser.JoinedAt.Value);
             _users.Add(newUser.Id, newUserData);
         }
         else
         {
-            if (_users[newUser.Id].Username != $"{newUser.Username}#{newUser.Discriminator}")
+            if (value.Username != $"{newUser.Username}#{newUser.Discriminator}")
             {
-                _logger.Log($"User id {newUser.Id} changed their name and/or discriminator from {_users[newUser.Id].Username} to {newUser.Username}#{newUser.Discriminator}. Updating userinfo.", level: LogLevel.Debug);
-                _users[newUser.Id].Username = $"{newUser.Username}#{newUser.Discriminator}";
-                if (!_users[newUser.Id].Aliases.Contains(newUser.DisplayName))
-                    _users[newUser.Id].Aliases.Add(newUser.DisplayName);
+                _logger.Log($"User id {newUser.Id} changed their name and/or discriminator from {value.Username} to {newUser.Username}#{newUser.Discriminator}. Updating userinfo.", level: LogLevel.Debug);
+                value.Username = $"{newUser.Username}#{newUser.Discriminator}";
+                if (!value.Aliases.Contains(newUser.DisplayName))
+                    value.Aliases.Add(newUser.DisplayName);
                 changed = true;
             }
-            else if (!_users[newUser.Id].Aliases.Contains(newUser.DisplayName))
+            else if (!value.Aliases.Contains(newUser.DisplayName))
             {
                 _logger.Log($"{newUser.DisplayName} ({newUser.Username}/{newUser.Id}) changed their DisplayName. Updating userinfo.", level: LogLevel.Debug);
-                _users[newUser.Id].Aliases.Add(newUser.DisplayName);
+                value.Aliases.Add(newUser.DisplayName);
                 changed = true;
             }
         }
-        
+
         if (_config.MemberRole != null)
         {
             if (_users[newUser.Id].Silenced &&
@@ -295,7 +287,7 @@ public class UserListener
                 changed = true;
             }
         }
-        
+
         foreach (var roleId in _users[newUser.Id].RolesToReapplyOnRejoin)
         {
             if (!newUser.Guild.Roles.Select(role => role.Id).Contains(roleId))
@@ -305,11 +297,10 @@ public class UserListener
                 _users[newUser.Id].RolesToReapplyOnRejoin.Remove(roleId);
                 _config.RolesToReapplyOnRejoin.Remove(roleId);
                 await FileHelper.SaveConfigAsync(_config);
-                changed = true;       
+                changed = true;
             }
             else
             {
-
                 if (!_config.RolesToReapplyOnRejoin.Contains(roleId))
                 {
                     _logger.Log(
@@ -323,7 +314,7 @@ public class UserListener
         if (changed)
         {
             await FileHelper.SaveUsersAsync(_users);
-            _logger.Log($"in the {(DateTimeOffset.UtcNow - FileHelper.firstFileAccess!).Value.TotalMinutes} minutes since first file access, I've made {FileHelper.usersSaves} usersSaves, {FileHelper.configSaves} configSaves, {FileHelper.scheduleSaves} scheduleSaves, {FileHelper.generalStorageSaves} generalStorageSaves, {FileHelper.quoteSaves} quoteSaves");
+            _logger.Log($"in the {(DateTimeOffset.UtcNow - FileHelper.FirstFileAccess!).Value.TotalMinutes} minutes since first file access, I've made {FileHelper.UsersSaves} usersSaves, {FileHelper.ConfigSaves} configSaves, {FileHelper.ScheduleSaves} scheduleSaves, {FileHelper.GeneralStorageSaves} generalStorageSaves, {FileHelper.QuoteSaves} quoteSaves");
         }
 
         var IMABOT_ROLE_ID = 1163260573606219856u;

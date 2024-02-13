@@ -1,14 +1,14 @@
 {
-  "profiles": {
-    "Izzy_Moonbot": {
-      "commandName": "Project",
-      "environmentVariables": {
-        "DOTNET_ENVIRONMENT": "Development"
-      },
-      "dotnetRunMessages": "true"
-    },
-    "Docker": {
-      "commandName": "Docker"
+    "profiles": {
+        "Izzy_Moonbot": {
+            "commandName": "Project",
+            "environmentVariables": {
+                "DOTNET_ENVIRONMENT": "Development"
+            },
+            "dotnetRunMessages": "true"
+        },
+        "Docker": {
+            "commandName": "Docker"
+        }
     }
-  }
 }

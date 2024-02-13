@@ -1,11 +1,10 @@
-using System;
+using Discord;
+using Discord.Commands;
+using Izzy_Moonbot.Adapters;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Discord;
-using Discord.Commands;
-using Izzy_Moonbot.Adapters;
 using static Izzy_Moonbot.Adapters.IIzzyClient;
 
 namespace Izzy_Moonbot.Helpers;
@@ -18,7 +17,7 @@ public class PaginationHelper
     private readonly string[] _staticParts;
 
     private readonly bool _useCodeBlock;
-    private ulong _authorId;
+    private readonly ulong _authorId;
     private bool _easterEggChanged;
     private string _easterEggEmoji;
     private IIzzyUserMessage? _message;
@@ -55,7 +54,7 @@ public class PaginationHelper
             pages[pageNumber] += lineItems[i];
         }
 
-        new PaginationHelper(context, pages.ToArray(), [ header, footer ], codeblock: codeblock, allowedMentions: allowedMentions);
+        new PaginationHelper(context, [.. pages], [header, footer], codeblock: codeblock, allowedMentions: allowedMentions);
     }
 
     public PaginationHelper(SocketCommandContext context, string[] pages, string[] staticParts,
@@ -91,7 +90,6 @@ public class PaginationHelper
             .WithButton(customId: "goto-next", emote: Emoji.Parse(":arrow_forward:"), disabled: false)
             .WithButton(customId: "goto-end", emote: Emoji.Parse(":track_next:"), disabled: false);
 
-
         _message = await context.Channel.SendMessageAsync(
             $"{_staticParts[0]}\n\n<a:rdloop:910875692785336351> Pagination is loading. Please wait...\n\n{_staticParts[1]}",
             components: builder.Build(), allowedMentions: _allowedMentions);
@@ -106,7 +104,7 @@ public class PaginationHelper
             Thread.Sleep(5 * 60 * 1000 + 1); // Sleep for 5 minutes
 
             if (_message == null) return;
-            
+
             _client.ButtonExecuted -= ButtonEvent; // Remove the event listener
 
             RedrawPagination();
@@ -116,7 +114,7 @@ public class PaginationHelper
     private async void RedrawPagination()
     {
         if (_message == null) return;
-        
+
         var expireMessage = "";
         if (ExpiresAt <= DateTime.UtcNow) expireMessage = "ℹ **This paginated message has expired.**";
 
@@ -137,14 +135,14 @@ public class PaginationHelper
                 {
                     truncationWarning = "⚠️ Some items needed to be truncated";
                     var items = page.Split('\n');
-                    var newlinesInPage = items.Count();
+                    var newlinesInPage = items.Length;
                     var spaceForPage = DiscordHelper.MessageLengthLimit - header.Length - footer.Length - paginationBoilerplate - newlinesInPage;
 
-                    var maxItemLength = spaceForPage / items.Count();
+                    var maxItemLength = spaceForPage / items.Length;
                     var truncationMarker = "[...]";
                     var truncatedItems = items.Select(i =>
                         i.Length <= maxItemLength ? i :
-                        i.Substring(0, maxItemLength - truncationMarker.Length) + truncationMarker);
+                        string.Concat(i.AsSpan(0, maxItemLength - truncationMarker.Length), truncationMarker));
 
                     page = string.Join('\n', truncatedItems);
                 }
@@ -186,18 +184,22 @@ public class PaginationHelper
                 _pageNumber = 0;
                 RedrawPagination();
                 break;
+
             case "goto-previous":
                 if (_pageNumber >= 1) _pageNumber -= 1;
                 RedrawPagination();
                 break;
+
             case "goto-next":
                 if (_pageNumber < Pages.Length - 1) _pageNumber += 1;
                 RedrawPagination();
                 break;
+
             case "goto-end":
                 _pageNumber = Pages.Length - 1;
                 RedrawPagination();
                 break;
+
             case "trigger-easteregg":
                 _easterEggChanged = true;
                 _easterEggEmoji = GetRandomEmoji();
@@ -219,14 +221,10 @@ public class PaginationHelper
         }
     }
 
-    private string GetRandomEmoji()
-    {
-        var index = new Random().Next(EasterEggEmojis.Count());
-        return EasterEggEmojis[index];
-    }
+    private static string GetRandomEmoji() => _easterEggEmojis[new Random().Next(_easterEggEmojis.Length)];
 
-    private readonly static string[] EasterEggEmojis = new string[]
-    {
+    private static readonly string[] _easterEggEmojis =
+    [
         "<:izzynothoughtsheadempty:910198222255972382>",
         "<a:izzywhat:891381404741550130>",
         "<:izzystare:884921135312015460>",
@@ -259,5 +257,5 @@ public class PaginationHelper
         "<a:izzynom:1007272501451178096>",
         "<:izzyscrunch:907312716979511317>",
         "<:izzysneaksy:1044262492932673607>",
-    };
+    ];
 }

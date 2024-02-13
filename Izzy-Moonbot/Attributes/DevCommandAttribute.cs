@@ -1,9 +1,8 @@
-using System;
-using System.Linq;
-using System.Threading.Tasks;
 using Discord.Commands;
 using Izzy_Moonbot.Settings;
 using Microsoft.Extensions.Configuration;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Izzy_Moonbot.Attributes;
 
@@ -11,7 +10,7 @@ namespace Izzy_Moonbot.Attributes;
 // List of "Developers" is in appsettings.json.
 public class DevCommandAttribute : PreconditionAttribute
 {
-    public static bool TestMode = false;
+    private static bool _testMode = false;
 
     private readonly DiscordSettings? _settings;
 
@@ -22,16 +21,18 @@ public class DevCommandAttribute : PreconditionAttribute
         // Get the config.
         // It has to be done like this because attributes don't get the services and settings.
         var config = new ConfigurationBuilder()
-            #if DEBUG
+#if DEBUG
             .AddJsonFile("appsettings.Development.json")
-            #else
+#else
             .AddJsonFile("appsettings.json")
-            #endif
+#endif
             .Build();
 
         var section = config.GetSection(nameof(DiscordSettings));
         _settings = section.Get<DiscordSettings>();
     }
+
+    public static bool TestMode { get => _testMode; set => _testMode = value; }
 
     public override Task<PreconditionResult> CheckPermissionsAsync(ICommandContext context, CommandInfo command,
         IServiceProvider services)

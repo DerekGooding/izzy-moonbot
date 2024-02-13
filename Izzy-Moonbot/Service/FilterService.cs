@@ -1,21 +1,20 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Discord;
 using Izzy_Moonbot.Adapters;
 using Izzy_Moonbot.Helpers;
 using Izzy_Moonbot.Settings;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Izzy_Moonbot.Service;
 
-public class FilterService
+public class FilterService(Config config, Dictionary<ulong, User> users, ModService mod, ModLoggingService modLog, LoggingService logger)
 {
-    private readonly ModService _mod;
-    private readonly ModLoggingService _modLog;
-    private readonly Config _config;
-    private readonly Dictionary<ulong, User> _users;
-    private readonly LoggingService _logger;
+    private readonly ModService _mod = mod;
+    private readonly ModLoggingService _modLog = modLog;
+    private readonly Config _config = config;
+    private readonly Dictionary<ulong, User> _users = users;
+    private readonly LoggingService _logger = logger;
 
     /*
      * The testString is a specific string that, while not in the actual filter list
@@ -24,15 +23,6 @@ public class FilterService
     */
     private readonly string _testString = "=+i8F8s+#(-{×nsBIo8~lA:IZZY_FILTER_TEST:G8282!##!";
 
-    public FilterService(Config config, Dictionary<ulong, User> users, ModService mod, ModLoggingService modLog, LoggingService logger)
-    {
-        _config = config;
-        _users = users;
-        _mod = mod;
-        _modLog = modLog;
-        _logger = logger;
-    }
-    
     public void RegisterEvents(IIzzyClient client)
     {
         client.MessageReceived += async (message) => await DiscordHelper.LeakOrAwaitTask(ProcessMessage(message, client));
@@ -50,8 +40,10 @@ public class FilterService
             .AddField("Trigger Word", $"{word}")
             .AddField("Filtered Message", $"{context.Message.CleanContent}");
 
-        var actions = new List<string>();
-        actions.Add(":x: - **I've deleted the offending message.**");
+        var actions = new List<string>
+        {
+            ":x: - **I've deleted the offending message.**"
+        };
 
         if (actionsTaken.Contains("message"))
             actions.Add($":speech_balloon: - **I've sent a message in response.**");
@@ -63,7 +55,7 @@ public class FilterService
         if (actionsTaken.Contains("timeout"))
             actions.Add($":stopwatch: - Since the user was already silenced, **I've given them a one-hour timeout.**");
 
-        var roleIds = context.Guild?.GetUser(context.User.Id)?.Roles.Select(role => role.Id).ToList() ?? new List<ulong>();
+        var roleIds = context.Guild?.GetUser(context.User.Id)?.Roles.Select(role => role.Id).ToList() ?? [];
         if (_config.FilterBypassRoles.Overlaps(roleIds))
         {
             actions.Clear();
@@ -98,12 +90,12 @@ public class FilterService
 
     private async Task ProcessFilterTrip(IIzzyContext context, string word, bool onEdit)
     {
-        var roleIds = context.Guild?.GetUser(context.User.Id)?.Roles.Select(role => role.Id).ToList() ?? new List<ulong>();
+        var roleIds = context.Guild?.GetUser(context.User.Id)?.Roles.Select(role => role.Id).ToList() ?? [];
 
         if (!_config.FilterBypassRoles.Overlaps(roleIds) &&
             !(DiscordHelper.IsDev(context.User.Id) && _config.FilterDevBypass))
             await context.Message.DeleteAsync();
-        
+
         try
         {
             var actions = new List<string>();
@@ -142,26 +134,28 @@ public class FilterService
         if (newMessage.Content == oldContent) return; // Ignore non-content edits
 
         if (newMessage.Author.Id == client.CurrentUser.Id) return; // Don't process self.
-        
+
         if (!_config.FilterEnabled) return;
         if (newMessage.Author.IsBot) return; // Don't listen to bots
         if (!DiscordHelper.IsInGuild(newMessage)) return;
         if (!DiscordHelper.IsProcessableMessage(newMessage)) return; // Not processable
         if (newMessage is not IIzzyUserMessage message) return; // Not processable
         IIzzyContext context = client.MakeContext(message);
-        
+
         if (!DiscordHelper.IsDefaultGuild(context)) return;
-        
+
         if (_config.FilterIgnoredChannels.Contains(context.Channel.Id)) return;
 
-        var filteredWords = new HashSet<string>(_config.FilterWords);
-        filteredWords.Add(_testString);
+        var filteredWords = new HashSet<string>(_config.FilterWords)
+        {
+            _testString
+        };
 
         var trip = false;
         foreach (var word in filteredWords)
         {
             if (trip) continue;
-            if (context.Message.Content.ToLower().Contains(word.ToLower()))
+            if (context.Message.Content.Contains(word, StringComparison.CurrentCultureIgnoreCase))
             {
                 // Filter Trip!
                 await ProcessFilterTrip(context, word, true);
@@ -173,26 +167,28 @@ public class FilterService
     public async Task ProcessMessage(IIzzyMessage messageParam, IIzzyClient client)
     {
         if (messageParam.Author.Id == client.CurrentUser.Id) return; // Don't process self.
-        
+
         if (!_config.FilterEnabled) return;
         if (messageParam.Author.IsBot) return; // Don't listen to bots
         if (!DiscordHelper.IsInGuild(messageParam)) return;
         if (!DiscordHelper.IsProcessableMessage(messageParam)) return; // Not processable
         if (messageParam is not IIzzyUserMessage message) return; // Not processable
         IIzzyContext context = client.MakeContext(message);
-        
+
         if (!DiscordHelper.IsDefaultGuild(context)) return;
-        
+
         if (_config.FilterIgnoredChannels.Contains(context.Channel.Id)) return;
 
-        var filteredWords = new HashSet<string>(_config.FilterWords);
-        filteredWords.Add(_testString);
+        var filteredWords = new HashSet<string>(_config.FilterWords)
+        {
+            _testString
+        };
 
         var trip = false;
         foreach (var word in filteredWords)
         {
             if (trip) continue;
-            if (context.Message.Content.ToLower().Contains(word.ToLower()))
+            if (context.Message.Content.Contains(word, StringComparison.CurrentCultureIgnoreCase))
             {
                 // Filter Trip!
                 await ProcessFilterTrip(context, word, false);

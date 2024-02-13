@@ -1,19 +1,13 @@
-using System;
-using System.Runtime.CompilerServices;
 using Discord.Commands;
 using Izzy_Moonbot.Adapters;
 using Microsoft.Extensions.Logging;
+using System.Runtime.CompilerServices;
 
 namespace Izzy_Moonbot.Service;
 
-public class LoggingService
+public class LoggingService(ILogger<Worker> logger)
 {
-    private readonly ILogger<Worker> _logger;
-
-    public LoggingService(ILogger<Worker> logger)
-    {
-        _logger = logger;
-    }
+    private readonly ILogger<Worker> _logger = logger;
 
     public void Log(string message, SocketCommandContext? context, LogLevel level = LogLevel.Information,
         [CallerMemberName] string memberName = "",
@@ -44,8 +38,7 @@ public class LoggingService
         if (memberName != "" || sourceFilePath != "" || sourceLineNumber != 0)
         {
             // The whole filepath is overkill, but we do have to account for both Windows and Linux separators here
-            var sourceFile = sourceFilePath.Substring(sourceFilePath.LastIndexOf('\\') + 1)
-                                           .Substring(sourceFilePath.LastIndexOf('/') + 1);
+            var sourceFile = sourceFilePath[(sourceFilePath.LastIndexOf('\\') + 1)..][(sourceFilePath.LastIndexOf('/') + 1)..];
             logMessage += $"[{sourceFile}:{memberName}:{sourceLineNumber}] ";
         }
         if (header)

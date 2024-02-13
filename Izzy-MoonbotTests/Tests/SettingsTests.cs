@@ -1,4 +1,4 @@
-﻿using Izzy_Moonbot.Settings;
+using Izzy_Moonbot.Settings;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
 

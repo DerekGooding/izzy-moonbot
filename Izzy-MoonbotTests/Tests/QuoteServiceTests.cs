@@ -1,7 +1,7 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Izzy_Moonbot.Adapters;
-using Izzy_Moonbot.Settings;
 using Izzy_Moonbot.Service;
+using Izzy_Moonbot.Settings;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Izzy_Moonbot_Tests.Services;
 
@@ -16,7 +16,7 @@ public class QuoteServiceTests
 
         // only one quote so that the "random" selection is deterministic for now
         var quotes = new QuoteStorage();
-        quotes.Quotes.Add(sunny.Id.ToString(), [ "gonna be my day" ]);
+        quotes.Quotes.Add(sunny.Id.ToString(), ["gonna be my day"]);
 
         var users = new Dictionary<ulong, User>();
         var s = new User(); s.Username = "Sunny Starscout"; users.Add(1, s);

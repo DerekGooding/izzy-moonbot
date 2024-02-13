@@ -1,6 +1,5 @@
 using Izzy_Moonbot.Helpers;
 using Izzy_Moonbot.Service;
-using System;
 using System.Collections.Generic;
 
 namespace Izzy_Moonbot.Settings;
@@ -15,7 +14,7 @@ public class GeneralStorage
         // Antiraid
         CurrentRaidMode = RaidMode.None;
         ManualRaidSilence = false;
-        SuspectedRaiders = new HashSet<ulong>();
+        SuspectedRaiders = [];
 
         // Banner management
         CurrentBooruFeaturedImage = null;
@@ -24,9 +23,10 @@ public class GeneralStorage
         LastRollTime = null;
         UsersWhoRolledToday = new HashSet<ulong>();
     }
-    
+
     // Antiraid
     public RaidMode CurrentRaidMode { get; set; }
+
     public bool ManualRaidSilence { get; set; }
     public HashSet<ulong> SuspectedRaiders { get; set; }
 
@@ -35,5 +35,6 @@ public class GeneralStorage
 
     // Best Pony rolls
     public DateTime? LastRollTime { get; set; }
+
     public ISet<ulong> UsersWhoRolledToday { get; set; }
 }

@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 
 namespace Izzy_Moonbot.Describers;
@@ -108,7 +107,6 @@ public class ConfigDescriber
             new ConfigItem("RolesToReapplyOnRejoin", ConfigItemType.RoleSet,
                 "The roles I'll reapply to a user when they join **if they had that role when they left**.",
                 ConfigItemCategory.ManagedRoles));
-
 
         // Filter settings
         _config.Add("FilterEnabled",
@@ -283,16 +281,14 @@ public class ConfigDescriber
 
     public List<string> GetSettableConfigItems()
     {
-        List<string> settableConfigItems = new();
-
-        foreach (var key in _config.Keys) settableConfigItems.Add(key);
+        List<string> settableConfigItems = [.. _config.Keys];
 
         return settableConfigItems;
     }
 
     public List<string> GetSettableConfigItemsByCategory(ConfigItemCategory category)
     {
-        List<string> settableConfigItems = new();
+        List<string> settableConfigItems = [];
 
         foreach (var key in _config.Keys)
             if (_config[key].Category == category)
@@ -301,111 +297,69 @@ public class ConfigDescriber
         return settableConfigItems;
     }
 
-    public ConfigItem? GetItem(string key)
-    {
-        if (!_config.ContainsKey(key)) return null;
+    public ConfigItem? GetItem(string key) => _config.TryGetValue(key, out ConfigItem? value) ? value : null;
 
-        return _config[key];
+    public static ConfigItemCategory? StringToCategory(string category)
+    {
+        return category.ToLower() switch
+        {
+            "setup" => (ConfigItemCategory?)ConfigItemCategory.Setup,
+            "misc" => (ConfigItemCategory?)ConfigItemCategory.Misc,
+            "banner" => (ConfigItemCategory?)ConfigItemCategory.Banner,
+            "managedroles" => (ConfigItemCategory?)ConfigItemCategory.ManagedRoles,
+            "filter" => (ConfigItemCategory?)ConfigItemCategory.Filter,
+            "spam" => (ConfigItemCategory?)ConfigItemCategory.Spam,
+            "raid" => (ConfigItemCategory?)ConfigItemCategory.Raid,
+            "bored" => (ConfigItemCategory?)ConfigItemCategory.Bored,
+            "witty" => (ConfigItemCategory?)ConfigItemCategory.Witty,
+            "monitoring" => (ConfigItemCategory?)ConfigItemCategory.Monitoring,
+            _ => null,
+        };
     }
 
-    public ConfigItemCategory? StringToCategory(string category)
+    public static string CategoryToString(ConfigItemCategory category)
     {
-        switch (category.ToLower())
+        return category switch
         {
-            case "setup":
-                return ConfigItemCategory.Setup;
-            case "misc":
-                return ConfigItemCategory.Misc;
-            case "banner":
-                return ConfigItemCategory.Banner;
-            case "managedroles":
-                return ConfigItemCategory.ManagedRoles;
-            case "filter":
-                return ConfigItemCategory.Filter;
-            case "spam":
-                return ConfigItemCategory.Spam;
-            case "raid":
-                return ConfigItemCategory.Raid;
-            case "bored":
-                return ConfigItemCategory.Bored;
-            case "witty":
-                return ConfigItemCategory.Witty;
-            case "monitoring":
-                return ConfigItemCategory.Monitoring;
-            default:
-                return null;
-        }
+            ConfigItemCategory.Setup => "Setup",
+            ConfigItemCategory.Misc => "Misc",
+            ConfigItemCategory.Banner => "Banner",
+            ConfigItemCategory.ManagedRoles => "ManagedRoles",
+            ConfigItemCategory.Filter => "Filter",
+            ConfigItemCategory.Spam => "Spam",
+            ConfigItemCategory.Raid => "Raid",
+            ConfigItemCategory.Bored => "Bored",
+            ConfigItemCategory.Witty => "Witty",
+            ConfigItemCategory.Monitoring => "Monitoring",
+            _ => "<UNKNOWN>",
+        };
     }
 
-    public string CategoryToString(ConfigItemCategory category)
+    public static string TypeToString(ConfigItemType type)
     {
-        switch (category)
+        return type switch
         {
-            case ConfigItemCategory.Setup:
-                return "Setup";
-            case ConfigItemCategory.Misc:
-                return "Misc";
-            case ConfigItemCategory.Banner:
-                return "Banner";
-            case ConfigItemCategory.ManagedRoles:
-                return "ManagedRoles";
-            case ConfigItemCategory.Filter:
-                return "Filter";
-            case ConfigItemCategory.Spam:
-                return "Spam";
-            case ConfigItemCategory.Raid:
-                return "Raid";
-            case ConfigItemCategory.Bored:
-                return "Bored";
-            case ConfigItemCategory.Witty:
-                return "Witty";
-            case ConfigItemCategory.Monitoring:
-                return "Monitoring";
-            default:
-                return "<UNKNOWN>";
-        }
-    }
-
-    public string TypeToString(ConfigItemType type)
-    {
-        switch (type)
-        {
-            case ConfigItemType.String:
-                return "String";
-            case ConfigItemType.Char:
-                return "Character";
-            case ConfigItemType.Boolean:
-                return "Boolean";
-            case ConfigItemType.Integer:
-                return "Integer";
-            case ConfigItemType.UnsignedInteger:
-                return "Unsigned Integer";
-            case ConfigItemType.Double:
-                return "Double";
-            case ConfigItemType.Enum:
-                return "Enum";
-            case ConfigItemType.Role:
-                return "Role";
-            case ConfigItemType.Channel:
-                return "Channel";
+            ConfigItemType.String => "String",
+            ConfigItemType.Char => "Character",
+            ConfigItemType.Boolean => "Boolean",
+            ConfigItemType.Integer => "Integer",
+            ConfigItemType.UnsignedInteger => "Unsigned Integer",
+            ConfigItemType.Double => "Double",
+            ConfigItemType.Enum => "Enum",
+            ConfigItemType.Role => "Role",
+            ConfigItemType.Channel => "Channel",
             // Keep calling them "lists" in the UI, since "list means order matters, set means it doesn't"
             // is a programmer thing our users won't expect. It also goes better with the `list` action.
-            case ConfigItemType.StringSet:
-                return "List of Strings";
-            case ConfigItemType.RoleSet:
-                return "List of Roles";
-            case ConfigItemType.ChannelSet:
-                return "List of Channels";
-            case ConfigItemType.StringDictionary:
-                return "Map of String";
-            case ConfigItemType.StringSetDictionary:
-                return "Map of Lists of Strings";
-            default:
-                return "<UNKNOWN>";
-        }
+            ConfigItemType.StringSet => "List of Strings",
+            ConfigItemType.RoleSet => "List of Roles",
+            ConfigItemType.ChannelSet => "List of Channels",
+            ConfigItemType.StringDictionary => "Map of String",
+            ConfigItemType.StringSetDictionary => "Map of Lists of Strings",
+            _ => "<UNKNOWN>",
+        };
     }
 
-    public bool TypeIsValue(ConfigItemType type)
+    public static bool TypeIsValue(ConfigItemType type)
     {
         return
             type == ConfigItemType.String ||
@@ -419,7 +373,7 @@ public class ConfigDescriber
             type == ConfigItemType.Channel;
     }
 
-    public bool TypeIsSet(ConfigItemType type)
+    public static bool TypeIsSet(ConfigItemType type)
     {
         return
             type == ConfigItemType.StringSet ||
@@ -427,10 +381,7 @@ public class ConfigDescriber
             type == ConfigItemType.ChannelSet;
     }
 
-    public bool TypeIsDictionaryValue(ConfigItemType type) => type == ConfigItemType.StringDictionary;
+    public static bool TypeIsDictionaryValue(ConfigItemType type) => type == ConfigItemType.StringDictionary;
 
-    public bool TypeIsDictionarySet(ConfigItemType type)
-    {
-        return type == ConfigItemType.StringSetDictionary;
-    }
+    public static bool TypeIsDictionarySet(ConfigItemType type) => type == ConfigItemType.StringSetDictionary;
 }

@@ -81,7 +81,7 @@ public class ParseHelperTests
     }
 
     [TestMethod()]
-    async public Task TryParseUserResolvable()
+    public async Task TryParseUserResolvable()
     {
         var (_, _, (izzyHerself, _), _, (generalChannel, _, _), stubGuild, stubClient) = TestUtils.DefaultStubs();
         var guild = new TestGuild(stubGuild, stubClient);
@@ -135,7 +135,7 @@ public class ParseHelperTests
     }
 
     [TestMethod()]
-    async public Task TryParseChannelResolvable()
+    public async Task TryParseChannelResolvable()
     {
         string? err;
 
@@ -226,7 +226,6 @@ public class ParseHelperTests
         );
         Assert.AreEqual(err, null);
 
-
         AssertTryParseDateTime(
             ParseHelper.TryParseDateTime("in 1 hour here's some text", out err),
             DateTimeHelper.UtcNow.AddHours(1), ScheduledJobRepeatType.None, "here's some text"
@@ -238,7 +237,6 @@ public class ParseHelperTests
             DateTimeHelper.UtcNow.AddHours(1), ScheduledJobRepeatType.None, "here's some text"
         );
         Assert.AreEqual(err, null);
-
 
         Assert.IsNull(ParseHelper.TryParseDateTime("in one hour", out err));
         Assert.IsNotNull(err);

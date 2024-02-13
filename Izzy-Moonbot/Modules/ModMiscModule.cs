@@ -1,4 +1,12 @@
-using System;
+using Discord;
+using Discord.Commands;
+using Discord.WebSocket;
+using Izzy_Moonbot.Adapters;
+using Izzy_Moonbot.Attributes;
+using Izzy_Moonbot.Helpers;
+using Izzy_Moonbot.Service;
+using Izzy_Moonbot.Settings;
+using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
@@ -6,40 +14,20 @@ using System.Linq;
 using System.Reflection.Metadata;
 using System.Text;
 using System.Threading.Tasks;
-using Discord;
-using Discord.Commands;
-using Discord.WebSocket;
-using Flurl.Http;
-using Izzy_Moonbot.Adapters;
-using Izzy_Moonbot.Attributes;
-using Izzy_Moonbot.Helpers;
-using Izzy_Moonbot.Service;
-using Izzy_Moonbot.Settings;
-using Microsoft.Extensions.Logging;
-using Serilog.Core;
 using static Izzy_Moonbot.EventListeners.ConfigListener;
 
 namespace Izzy_Moonbot.Modules;
 
 [Summary("Moderator-only commands that are either infrequently used or just for fun.")]
-public class ModMiscModule : ModuleBase<SocketCommandContext>
+public class ModMiscModule(Config config, Dictionary<ulong, User> users,
+    ScheduleService schedule, LoggingService logger, TransientState state, ModService modService) : ModuleBase<SocketCommandContext>
 {
-    private readonly Config _config;
-    private readonly ScheduleService _schedule;
-    private readonly Dictionary<ulong, User> _users;
-    private readonly LoggingService _logger;
-    private readonly TransientState _state;
-    private readonly ModService _mod;
-
-    public ModMiscModule(Config config, Dictionary<ulong, User> users, ScheduleService schedule, LoggingService logger, TransientState state, ModService modService)
-    {
-        _config = config;
-        _schedule = schedule;
-        _users = users;
-        _logger = logger;
-        _state = state;
-        _mod = modService;
-    }
+    private readonly Config _config = config;
+    private readonly ScheduleService _schedule = schedule;
+    private readonly Dictionary<ulong, User> _users = users;
+    private readonly LoggingService _logger = logger;
+    private readonly TransientState _state = state;
+    private readonly ModService _mod = modService;
 
     [Command("panic")]
     [Summary("Immediately disconnects the client in case of emergency.")]
@@ -62,7 +50,7 @@ public class ModMiscModule : ModuleBase<SocketCommandContext>
     [DevCommand(Group = "Permissions")]
     [Parameter("user", ParameterType.UnambiguousUser, "The user to remove the scheduled removal from.")]
     public async Task PermaNpCommandAsync(
-        [Remainder]string argsString = "")
+        [Remainder] string argsString = "")
     {
         if (argsString == "")
         {
@@ -82,7 +70,7 @@ public class ModMiscModule : ModuleBase<SocketCommandContext>
         await ReplyAsync(output);
     }
 
-    static public async Task<string> PermaNpCommandIImpl(ScheduleService scheduleService, Config config, ulong userId)
+    public static async Task<string> PermaNpCommandIImpl(ScheduleService scheduleService, Config config, ulong userId)
     {
         var getSingleNewPonyRemoval = new Func<ScheduledJob, bool>(job =>
             job.Action is ScheduledRoleRemovalJob removalJob &&
@@ -150,14 +138,14 @@ public class ModMiscModule : ModuleBase<SocketCommandContext>
         );
     }
 
-    public async Task TestableEchoCommandAsync(
+    public static async Task TestableEchoCommandAsync(
         IIzzyContext context,
         string argsString = "",
         ISticker[]? stickers = null)
     {
         ulong? channelId;
         string message;
-        if (ParseHelper.TryParseChannelResolvable(argsString, context, out var channelParseError) is var (parsedChannelId, argsAfterChannel))
+        if (ParseHelper.TryParseChannelResolvable(argsString, context, out _) is var (parsedChannelId, argsAfterChannel))
         {
             message = DiscordHelper.StripQuotes(argsAfterChannel);
             channelId = parsedChannelId;
@@ -168,7 +156,7 @@ public class ModMiscModule : ModuleBase<SocketCommandContext>
             channelId = null;
         }
 
-        if (message == "" && (stickers is null || !stickers.Any()))
+        if (message == "" && (stickers is null || stickers.Length == 0))
         {
             await context.Channel.SendMessageAsync("You must provide either a non-empty message or an available sticker for me to echo.");
             return;
@@ -204,13 +192,13 @@ public class ModMiscModule : ModuleBase<SocketCommandContext>
                 "I'm unable to detect stowaways because the `MemberRole` config value is set to nothing.");
             return;
         }
-            
+
         await Task.Run(async () =>
         {
             if (!Context.Guild.HasAllMembers) await Context.Guild.DownloadUsersAsync();
 
             var stowawaySet = new HashSet<SocketGuildUser>();
-            
+
             await foreach (var socketGuildUser in Context.Guild.Users.ToAsyncEnumerable())
             {
                 if (socketGuildUser.IsBot) continue; // Bots aren't stowaways
@@ -243,7 +231,7 @@ public class ModMiscModule : ModuleBase<SocketCommandContext>
     [ModCommand(Group = "Permissions")]
     [DevCommand(Group = "Permissions")]
     [Parameter("[...]", ParameterType.Complex, "")]
-    public async Task ScheduleCommandAsync([Remainder]string argsString = "")
+    public async Task ScheduleCommandAsync([Remainder] string argsString = "")
     {
         await TestableScheduleCommandAsync(
             new SocketCommandContextAdapter(Context),
@@ -285,8 +273,8 @@ public class ModMiscModule : ModuleBase<SocketCommandContext>
         }
 
         var args = DiscordHelper.GetArguments(argsString);
-        
-        if (args.Arguments[0].ToLower() == "list")
+
+        if (args.Arguments[0].Equals("list", StringComparison.CurrentCultureIgnoreCase))
         {
             if (args.Arguments.Length == 1)
             {
@@ -333,13 +321,13 @@ public class ModMiscModule : ModuleBase<SocketCommandContext>
                 );
             }
         }
-        else if (args.Arguments[0].ToLower() == "list-file")
+        else if (args.Arguments[0].Equals("list-file", StringComparison.CurrentCultureIgnoreCase))
         {
             if (args.Arguments.Length == 1)
             {
                 // All
                 var jobs = _schedule.GetScheduledJobs().Select(job => job.ToFileString()).ToList();
-                
+
                 var s = new MemoryStream(Encoding.UTF8.GetBytes(string.Join('\n', jobs)));
                 var fa = new FileAttachment(s, $"all_scheduled_jobs_{DateTimeHelper.UtcNow.ToUnixTimeSeconds()}.txt");
 
@@ -356,16 +344,16 @@ public class ModMiscModule : ModuleBase<SocketCommandContext>
                         $"There is no \"{jobType}\" job type.\n{supportedJobTypesMessage}");
                     return;
                 }
-                
+
                 var jobs = _schedule.GetScheduledJobs().Where(job => job.Action.GetType().FullName == type.FullName).Select(job => job.ToFileString()).ToList();
-                
+
                 var s = new MemoryStream(Encoding.UTF8.GetBytes(string.Join('\n', jobs)));
                 var fa = new FileAttachment(s, $"{jobType}_scheduled_jobs_{DateTimeHelper.UtcNow.ToUnixTimeSeconds()}.txt");
 
                 await context.Channel.SendFileAsync(fa, $"Here's the file list of all scheduled {jobType} jobs!");
             }
         }
-        else if (args.Arguments[0].ToLower() == "about")
+        else if (args.Arguments[0].Equals("about", StringComparison.CurrentCultureIgnoreCase))
         {
             var searchString = string.Join("", argsString.Skip(args.Indices[0]));
 
@@ -374,7 +362,7 @@ public class ModMiscModule : ModuleBase<SocketCommandContext>
                 await context.Channel.SendMessageAsync("You need to provide either a job type, or an ID for a specific job.");
                 return;
             }
-            
+
             // Check IDs first
             var potentialJob = _schedule.GetScheduledJob(searchString);
             if (potentialJob != null)
@@ -395,7 +383,7 @@ public class ModMiscModule : ModuleBase<SocketCommandContext>
                     ScheduledEndRaidJob endRaidJob => $"Raid IsLarge: {endRaidJob.IsLarge}",
                     _ => ""
                 };
-                
+
                 var expandedRepeatInfo = potentialJob.RepeatType switch
                 {
                     ScheduledJobRepeatType.None => "",
@@ -405,7 +393,7 @@ public class ModMiscModule : ModuleBase<SocketCommandContext>
                     ScheduledJobRepeatType.Yearly => $"Every year at {potentialJob.ExecuteAt:T} on {potentialJob.ExecuteAt:dd MMMM}\n",
                     _ => throw new NotImplementedException("Unknown repeat type.")
                 };
-                
+
                 await context.Channel.SendMessageAsync(
                     $"Here's information regarding the scheduled job with ID of `{potentialJob.Id}`:\n" +
                     $"Job type: {jobType}\n" +
@@ -423,12 +411,11 @@ public class ModMiscModule : ModuleBase<SocketCommandContext>
                         $"There is no \"{searchString}\" job ID or job type.\n{supportedJobTypesMessage}");
                     return;
                 }
-                
+
                 var content = "";
-                switch (type.Name)
+                content = type.Name switch
                 {
-                    case "ScheduledRoleRemovalJob":
-                        content = $"""
+                    "ScheduledRoleRemovalJob" => $"""
                             **Role Removal**
                             *Removes a role from a user after a specified amount of time.*
                             Creation syntax:
@@ -438,10 +425,8 @@ public class ModMiscModule : ModuleBase<SocketCommandContext>
                             `user id` - The id of the user to remove the role from.
                             `role id` - The id of the role to remove.
                             `reason` - Optional reason (if omitted, one will be autogenerated).
-                            """;
-                        break;
-                    case "ScheduledRoleAdditionJob":
-                        content = $"""
+                            """,
+                    "ScheduledRoleAdditionJob" => $"""
                             **Role Addition**
                             *Adds a role to a user in a specified amount of time.*
                             Creation syntax:
@@ -451,10 +436,8 @@ public class ModMiscModule : ModuleBase<SocketCommandContext>
                             `user id` - The id of the user to add the role to.
                             `role id` - The id of the role to add.
                             `reason` - Optional reason (if omitted, one will be autogenerated).
-                            """;
-                        break;
-                    case "ScheduledUnbanJob":
-                        content = $"""
+                            """,
+                    "ScheduledUnbanJob" => $"""
                             **Unban User**
                             *Unbans a user after a specified amount of time.*
                             Creation syntax:
@@ -462,10 +445,8 @@ public class ModMiscModule : ModuleBase<SocketCommandContext>
                             {_config.Prefix}schedule add {searchString} <date/time> <user id>
                             ```
                             `user id` - The id of the user to unban.
-                            """;
-                        break;
-                    case "ScheduledEchoJob":
-                        content = $"""
+                            """,
+                    "ScheduledEchoJob" => $"""
                             **Echo**
                             *Sends a message in a channel, or to a users DMs.*
                             Creation syntax:
@@ -474,10 +455,8 @@ public class ModMiscModule : ModuleBase<SocketCommandContext>
                             ```
                             `channel/user id` - The id of either the channel or user to send the message to.
                             `content` - The message to send.
-                            """;
-                        break;
-                    case "ScheduledBannerRotationJob":
-                        content = $"""
+                            """,
+                    "ScheduledBannerRotationJob" => $"""
                             **Banner Rotation**
                             *Runs banner rotation, or checks Manebooru for featured image depending on `BannerMode`.*
                             :warning: This scheduled job is managed by Izzy internally. It is best not to modify it with this command.
@@ -485,10 +464,8 @@ public class ModMiscModule : ModuleBase<SocketCommandContext>
                             ```
                             {_config.Prefix}schedule add {searchString} <date/time>
                             ```
-                            """;
-                        break;
-                    case "ScheduledBoredCommandsJob":
-                        content = $"""
+                            """,
+                    "ScheduledBoredCommandsJob" => $"""
                             **Bored Commands**
                             *If no one has posted in `BoredChannel` within the last `BoredCooldown` seconds, this job posts one of the strings in `BoredCommands`, typically a command meant to be executed by Izzy herself or another bot. Then reschedules itself for `BoredCooldown` seconds in the future.*
                             :warning: This scheduled job is managed by Izzy internally. It is best not to modify it with this command.
@@ -496,10 +473,8 @@ public class ModMiscModule : ModuleBase<SocketCommandContext>
                             ```
                             {_config.Prefix}schedule add {searchString} <date/time>
                             ```
-                            """;
-                        break;
-                    case "ScheduledEndRaidJob":
-                        content = $"""
+                            """,
+                    "ScheduledEndRaidJob" => $"""
                             **End Raid**
                             Resets Izzy's internal raid-related state some time after a possible raid is detected. See `.help ass` for more context.
                             :warning: This scheduled job is managed by Izzy internally. It is best not to modify it with this command.
@@ -507,20 +482,16 @@ public class ModMiscModule : ModuleBase<SocketCommandContext>
                             ```
                             {_config.Prefix}schedule add {searchString} <date/time> <islarge>
                             ```
-                            """;
-                        break;
-                    default:
-                        content = $"""
+                            """,
+                    _ => $"""
                             **Unknown type**
                             *I don't know what this type is?*
-                            """;
-                        break;
-                }
-
+                            """,
+                };
                 await context.Channel.SendMessageAsync(content, allowedMentions: AllowedMentions.None);
             }
-        } 
-        else if (args.Arguments[0].ToLower() == "add")
+        }
+        else if (args.Arguments[0].Equals("add", StringComparison.CurrentCultureIgnoreCase))
         {
             if (args.Arguments.Length == 1)
             {
@@ -597,12 +568,15 @@ public class ModMiscModule : ModuleBase<SocketCommandContext>
                     }
                     action = new ScheduledEchoJob(channelId, string.Join("", actionArgsString.Skip(actionArgs.Indices[0])));
                     break;
+
                 case "banner":
                     action = new ScheduledBannerRotationJob();
                     break;
+
                 case "bored":
                     action = new ScheduledBoredCommandsJob();
                     break;
+
                 case "endraid":
                     if (!bool.TryParse(actionArgTokens.ElementAt(0), out bool isLarge))
                     {
@@ -611,6 +585,7 @@ public class ModMiscModule : ModuleBase<SocketCommandContext>
                     }
                     action = new ScheduledEndRaidJob(isLarge);
                     break;
+
                 default: throw new InvalidCastException($"{typeArg} is not a valid job type");
             };
 
@@ -618,7 +593,7 @@ public class ModMiscModule : ModuleBase<SocketCommandContext>
             await _schedule.CreateScheduledJob(job);
             await context.Channel.SendMessageAsync($"Created scheduled job: {job.ToDiscordString()}", allowedMentions: AllowedMentions.None);
         }
-        else if (args.Arguments[0].ToLower() == "remove")
+        else if (args.Arguments[0].Equals("remove", StringComparison.CurrentCultureIgnoreCase))
         {
             var searchString = string.Join("", argsString.Skip(args.Indices[0]));
 
@@ -627,7 +602,7 @@ public class ModMiscModule : ModuleBase<SocketCommandContext>
                 await context.Channel.SendMessageAsync("You need to provide an ID for a specific scheduled job.");
                 return;
             }
-            
+
             // Check IDs first
             var potentialJob = _schedule.GetScheduledJob(searchString);
             if (potentialJob == null)
@@ -647,8 +622,8 @@ public class ModMiscModule : ModuleBase<SocketCommandContext>
                 await context.Channel.SendMessageAsync("Sorry, I couldn't find that job.");
             }
         }
-    } 
-    
+    }
+
     private static string ConstructRelativeRepeatTimeString(ScheduledJob job)
     {
         var secondsBetweenExecution = job.ExecuteAt.ToUnixTimeSeconds() - (job.LastExecutedAt?.ToUnixTimeSeconds() ?? job.CreatedAt.ToUnixTimeSeconds());
@@ -779,8 +754,9 @@ public class ModMiscModule : ModuleBase<SocketCommandContext>
 
         if (
             !_state.RecentMessages.TryGetValue((ulong)userId, out var recentMessages) ||
-            recentMessages.Count == 0
-        ) {
+            recentMessages.IsEmpty
+        )
+        {
             await ReplyAsync($"I haven't seen any messages from <@{userId}> since my last restart. Sorry.", allowedMentions: AllowedMentions.None);
             return;
         }

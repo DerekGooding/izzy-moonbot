@@ -6,11 +6,8 @@ public class QuoteStorage
 {
     public QuoteStorage()
     {
-        Quotes = new Dictionary<
-            string, // a stringified user id
-            List<string>
-        >();
-        Aliases = new Dictionary<string, string>();
+        Quotes = [];
+        Aliases = [];
     }
 
     public Dictionary<string, List<string>> Quotes { get; set; }

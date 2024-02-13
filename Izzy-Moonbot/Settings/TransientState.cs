@@ -1,26 +1,16 @@
-using System;
+using Izzy_Moonbot.Helpers;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using Izzy_Moonbot.Helpers;
 
 namespace Izzy_Moonbot.Settings;
 
-public class RecentMessage
+public class RecentMessage(ulong messageId, ulong channelId, DateTimeOffset timestamp, string content, int embedsCount)
 {
-    public ulong MessageId;
-    public ulong ChannelId;
-    public DateTimeOffset Timestamp;
-    public string Content;
-    public int EmbedsCount;
-
-    public RecentMessage(ulong messageId, ulong channelId, DateTimeOffset timestamp, string content, int embedsCount)
-    {
-        MessageId = messageId;
-        ChannelId = channelId;
-        Timestamp = timestamp;
-        Content = content;
-        EmbedsCount = embedsCount;
-    }
+    public ulong MessageId = messageId;
+    public ulong ChannelId = channelId;
+    public DateTimeOffset Timestamp = timestamp;
+    public string Content = content;
+    public int EmbedsCount = embedsCount;
 
     public string GetJumpUrl() => $"https://discord.com/channels/{DiscordHelper.DefaultGuild()}/{ChannelId}/{MessageId}";
 }
@@ -38,7 +28,7 @@ public class TransientState
     public DateTimeOffset LastMentionResponse = DateTimeOffset.MinValue;
 
     // RaidService
-    public List<ulong> RecentJoins = new();
+    public List<ulong> RecentJoins = [];
 
     public ConcurrentDictionary<ulong, ConcurrentQueue<RecentMessage>> RecentMessages = new();
 }

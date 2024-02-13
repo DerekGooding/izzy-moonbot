@@ -232,7 +232,7 @@ public class ConfigCommandTests
 
         context = await client.AddMessageAsync(guild.Id, generalChannel.Id, sunny.Id, ".config MentionResponses clear");
         await ConfigCommand.TestableConfigCommandAsync(context, cfg, cd, "MentionResponses", "clear");
-        TestUtils.AssertSetsAreEqual(cfg.MentionResponses, new HashSet<string>{});
+        TestUtils.AssertSetsAreEqual(cfg.MentionResponses, new HashSet<string> { });
 
         description = generalChannel.Messages.Last().Content;
         StringAssert.Contains(description, "MentionResponses");
@@ -247,9 +247,9 @@ public class ConfigCommandTests
 
         cfg.SpamBypassRoles.Add(2ul);
         var context = await client.AddMessageAsync(guild.Id, generalChannel.Id, sunny.Id, ".config SpamBypassRoles add <@&1>");
-    
+
         await ConfigCommand.TestableConfigCommandAsync(context, cfg, cd, "SpamBypassRoles", "add <@&1>");
-    
+
         TestUtils.AssertSetsAreEqual(cfg.SpamBypassRoles, new HashSet<ulong> { 2ul, 1ul });
 
         var description = generalChannel.Messages.Last().Content;
@@ -342,25 +342,24 @@ public class ConfigCommandTests
     {
         var izzyHerself = new StubGuildUser("Izzy Moonbot", 1);
         var sunny = new StubGuildUser("Sunny", 2);
-        List<StubGuildUser> users = [ izzyHerself, sunny ];
+        List<StubGuildUser> users = [izzyHerself, sunny];
 
         var alicorn = new TestRole("Alicorn", 1);
         var pony = new TestRole("Pony", 2);
         var newPony = new TestRole("New Pony", 3);
-        List<TestRole> roles = [ alicorn, pony, newPony ];
+        List<TestRole> roles = [alicorn, pony, newPony];
 
         var generalChannel = new StubChannel(1, "general");
         var modChannel = new StubChannel(2, "modchat");
         var logChannel = new StubChannel(3, "bot-logs");
         var bestPonyChannel = new StubChannel(42, "best-pony-queue");
-        List<StubChannel> channels = [ generalChannel, modChannel, logChannel, bestPonyChannel ];
+        List<StubChannel> channels = [generalChannel, modChannel, logChannel, bestPonyChannel];
 
         var guild = new StubGuild(1, "Maretime Bay", roles, users, channels);
-        var client = new StubClient(izzyHerself, [ guild ]);
+        var client = new StubClient(izzyHerself, [guild]);
 
         var cfg = new Config();
         var cd = new ConfigDescriber();
-
 
         // post ".config Prefix *"
         Assert.AreEqual(cfg.Prefix, '.');
@@ -803,14 +802,14 @@ public class ConfigCommandTests
         Assert.AreEqual(59, configPropsCount,
             $"\nIf you just added or removed a config item, then this test is probably out of date");
 
-        Assert.AreEqual(configPropsCount * 2, generalChannel.Messages.Count(),
+        Assert.AreEqual(configPropsCount * 2, generalChannel.Messages.Count,
             $"\nIf you just added or removed a config item, then this test is probably out of date");
     }
 
     [TestMethod()]
     public async Task ConfigCommand_SuggestionTestsAsync()
     {
-        var (cfg, cd, (izzyHerself, sunny), _, (generalChannel, _, _), guild, client) = TestUtils.DefaultStubs();
+        var (cfg, cd, (_, sunny), _, (generalChannel, _, _), guild, client) = TestUtils.DefaultStubs();
 
         // mis-capitalization doesn't even reach suggestions, .config is case-insensitive now
 

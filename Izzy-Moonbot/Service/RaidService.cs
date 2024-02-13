@@ -1,12 +1,9 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Discord;
-using Discord.WebSocket;
 using Izzy_Moonbot.Adapters;
 using Izzy_Moonbot.Helpers;
 using Izzy_Moonbot.Settings;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Izzy_Moonbot.Service;
 
@@ -76,15 +73,19 @@ public class RaidService
     }
 
     public string TIME_SINCE_SMALL() => $"{_config.SmallRaidDecay} minutes have passed since I detected a spike of {_config.SmallRaidSize} recent joins";
-    public string TIME_SINCE_LARGE() => $"{_config.LargeRaidDecay} minutes have passed since I detected a spike of {_config.LargeRaidSize} recent joins";
-    public string BUT_RECENT() => $"but there are {_state.RecentJoins.Count} (>={_config.SmallRaidSize}) recent joins now";
-    public string AND_ONLY_RECENT() => $"and there are only {_state.RecentJoins.Count} (<{_config.SmallRaidSize}) recent joins now";
-    public static string CONSIDER_OVER = ", so I consider the raid to be over.";
-    public static string CONSIDER_ONGOING = ", so I consider the raid to be ongoing and will not generate any additional messages.";
-    public static string ALARMS_ACTIVE = "Any future spike in recent joins will generate a new alarm.";
-    public static string PLEASE_ASSOFF = "Please run `.assoff` when you believe the raid is over, so I know to start alarming on join spikes again.";
 
-    private string RaidersDescription(List<IIzzyGuildUser> recentJoins)
+    public string TIME_SINCE_LARGE() => $"{_config.LargeRaidDecay} minutes have passed since I detected a spike of {_config.LargeRaidSize} recent joins";
+
+    public string BUT_RECENT() => $"but there are {_state.RecentJoins.Count} (>={_config.SmallRaidSize}) recent joins now";
+
+    public string AND_ONLY_RECENT() => $"and there are only {_state.RecentJoins.Count} (<{_config.SmallRaidSize}) recent joins now";
+
+    public const string CONSIDER_OVER = ", so I consider the raid to be over.";
+    public const string CONSIDER_ONGOING = ", so I consider the raid to be ongoing and will not generate any additional messages.";
+    public const string ALARMS_ACTIVE = "Any future spike in recent joins will generate a new alarm.";
+    public const string PLEASE_ASSOFF = "Please run `.assoff` when you believe the raid is over, so I know to start alarming on join spikes again.";
+
+    private static string RaidersDescription(List<IIzzyGuildUser> recentJoins)
     {
         var raiderDescriptions = new List<string>();
         recentJoins.ForEach(member =>
@@ -95,6 +96,7 @@ public class RaidService
         });
         return string.Join($"\n", raiderDescriptions);
     }
+
     private async Task TripSmallRaid(IIzzyGuild guild, List<IIzzyGuildUser> recentJoins)
     {
         _log.Log("Small raid detected!");

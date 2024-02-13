@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 
 namespace Izzy_Moonbot.Settings;
@@ -8,10 +7,10 @@ public class User
     public User()
     {
         Username = "";
-        Aliases = new List<string>();
-        Joins = new List<DateTimeOffset>();
+        Aliases = [];
+        Joins = [];
         Silenced = false;
-        RolesToReapplyOnRejoin = new HashSet<ulong>();
+        RolesToReapplyOnRejoin = [];
         LastMessageTimeInMonitoredChannel = DateTimeOffset.MinValue;
     }
 
@@ -23,18 +22,10 @@ public class User
     public DateTimeOffset LastMessageTimeInMonitoredChannel { get; set; }
 }
 
-public class PreviousMessageItem
+public class PreviousMessageItem(ulong id, ulong channelId, ulong guildId, DateTimeOffset timestamp)
 {
-    public PreviousMessageItem(ulong id, ulong channelId, ulong guildId, DateTimeOffset timestamp)
-    {
-        Id = id;
-        ChannelId = channelId;
-        GuildId = guildId;
-        Timestamp = timestamp;
-    }
-    
-    public ulong Id { get; set; }
-    public ulong ChannelId { get; set; }
-    public ulong GuildId { get; set; }
-    public DateTimeOffset Timestamp { get; set; }
+    public ulong Id { get; set; } = id;
+    public ulong ChannelId { get; set; } = channelId;
+    public ulong GuildId { get; set; } = guildId;
+    public DateTimeOffset Timestamp { get; set; } = timestamp;
 }

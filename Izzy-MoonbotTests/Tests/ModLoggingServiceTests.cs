@@ -1,4 +1,4 @@
-﻿using Izzy_Moonbot.Adapters;
+using Izzy_Moonbot.Adapters;
 using Izzy_Moonbot.Service;
 using Izzy_Moonbot.Settings;
 using Microsoft.VisualStudio.TestTools.UnitTesting;

@@ -1,11 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection.Metadata;
-using System.Threading.Tasks;
 using Discord;
 using Discord.Commands;
-using Discord.WebSocket;
 using Izzy_Moonbot.Adapters;
 using Izzy_Moonbot.Attributes;
 using Izzy_Moonbot.Describers;
@@ -14,32 +8,24 @@ using Izzy_Moonbot.Helpers;
 using Izzy_Moonbot.Service;
 using Izzy_Moonbot.Settings;
 using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection.Metadata;
+using System.Threading.Tasks;
 
 namespace Izzy_Moonbot.Modules;
 
 [Summary("Misc commands which exist for fun.")]
-public class MiscModule : ModuleBase<SocketCommandContext>
+public class MiscModule(Config config, ConfigDescriber configDescriber, ScheduleService schedule, LoggingService logger, ModLoggingService modLog, CommandService commands, GeneralStorage generalStorage, QuoteService quoteService) : ModuleBase<SocketCommandContext>
 {
-    private readonly Config _config;
-    private readonly ConfigDescriber _configDescriber;
-    private readonly ScheduleService _schedule;
-    private readonly LoggingService _logger;
-    private readonly ModLoggingService _modLog;
-    private readonly CommandService _commands;
-    private readonly GeneralStorage _generalStorage;
-    private readonly QuoteService _quoteService;
-
-    public MiscModule(Config config, ConfigDescriber configDescriber, ScheduleService schedule, LoggingService logger, ModLoggingService modLog, CommandService commands, GeneralStorage generalStorage, QuoteService quoteService)
-    {
-        _config = config;
-        _configDescriber = configDescriber;
-        _schedule = schedule;
-        _logger = logger;
-        _modLog = modLog;
-        _commands = commands;
-        _generalStorage = generalStorage;
-        _quoteService = quoteService;
-    }
+    private readonly Config _config = config;
+    private readonly ConfigDescriber _configDescriber = configDescriber;
+    private readonly ScheduleService _schedule = schedule;
+    private readonly LoggingService _logger = logger;
+    private readonly ModLoggingService _modLog = modLog;
+    private readonly CommandService _commands = commands;
+    private readonly GeneralStorage _generalStorage = generalStorage;
+    private readonly QuoteService _quoteService = quoteService;
 
     [Command("banner")]
     [Summary("Get the current banner of Manechat.")]
@@ -74,14 +60,14 @@ public class MiscModule : ModuleBase<SocketCommandContext>
     [Alias("sft")]
     [Parameter("snowflake", ParameterType.Snowflake, "The snowflake to get the creation date from.")]
     [ExternalUsageAllowed]
-    public async Task SnowflakeTimeCommandAsync([Remainder]string snowflakeString = "")
+    public async Task SnowflakeTimeCommandAsync([Remainder] string snowflakeString = "")
     {
         if (snowflakeString == "")
         {
             await Context.Channel.SendMessageAsync("You need to give me a snowflake to convert!");
             return;
         }
-        
+
         try
         {
             var snowflake = ulong.Parse(snowflakeString);
@@ -183,9 +169,9 @@ public class MiscModule : ModuleBase<SocketCommandContext>
             return;
         }
 
-        if (_config.HiddenRules.ContainsKey(argString))
+        if (_config.HiddenRules.TryGetValue(argString, out string? value))
         {
-            await context.Channel.SendMessageAsync(_config.HiddenRules[argString]);
+            await context.Channel.SendMessageAsync(value);
             return;
         }
 
@@ -239,13 +225,13 @@ public class MiscModule : ModuleBase<SocketCommandContext>
             await context.Channel.SendMessageAsync($"Sorry, I couldn't convert {argString} to a number.");
         }
     }
-    
+
     [Command("help")]
     [Summary("Lists all commands or command categories you can use, or describes how to use a certain command or alias.")]
     [Parameter("search", ParameterType.String, "The command, category, or alias you want to get information about.")]
     [ExternalUsageAllowed]
     public async Task HelpCommandAsync(
-        [Remainder]string item = "")
+        [Remainder] string item = "")
     {
         await TestableHelpCommandAsync(
             new SocketCommandContextAdapter(Context),
@@ -262,7 +248,7 @@ public class MiscModule : ModuleBase<SocketCommandContext>
         var isDev = DiscordHelper.IsDev(context.User.Id);
         var isMod = (context.User is IIzzyGuildUser guildUser) && (guildUser.Roles.Any(r => r.Id == _config.ModRole));
 
-        Func<CommandInfo, bool> canRunCommand = cinfo => CanRunCommand(cinfo, isMod, isDev);
+        bool canRunCommand(CommandInfo cinfo) => CanRunCommand(cinfo, isMod, isDev);
 
         if (item == "")
         {
@@ -310,10 +296,10 @@ public class MiscModule : ModuleBase<SocketCommandContext>
                     $"Run `{prefix}help <command>` for help regarding a specific command!");
             }
         }
-        else if (_commands.Commands.Any(command => command.Name.ToLower() == item.ToLower()))
+        else if (_commands.Commands.Any(command => command.Name.Equals(item, StringComparison.CurrentCultureIgnoreCase)))
         {
             // It's a command!
-            var commandInfo = _commands.Commands.Single<CommandInfo>(command => command.Name.ToLower() == item.ToLower());
+            var commandInfo = _commands.Commands.Single(command => command.Name.Equals(item, StringComparison.CurrentCultureIgnoreCase));
             if (canRunCommand(commandInfo))
             {
                 var ponyReadable = PonyReadableCommandHelp(prefix, item, commandInfo);
@@ -326,15 +312,15 @@ public class MiscModule : ModuleBase<SocketCommandContext>
         }
         // Module.
         else if ((isDev || isMod) &&
-            _commands.Modules.Any(module => module.Name.ToLower() == item.ToLower() ||
-                                            module.Name.ToLower() == item.ToLower() + "module"))
+            _commands.Modules.Any(module => module.Name.Equals(item, StringComparison.CurrentCultureIgnoreCase) ||
+                                            module.Name.Equals(item.ToLower() + "module", StringComparison.CurrentCultureIgnoreCase)))
         {
             // It's a module!
-            var moduleInfo = _commands.Modules.Single<ModuleInfo>(module =>
-                module.Name.ToLower() == item.ToLower() ||
-                module.Name.ToLower() == item.ToLower() + "module");
+            var moduleInfo = _commands.Modules.Single(module =>
+                module.Name.Equals(item, StringComparison.CurrentCultureIgnoreCase) ||
+                module.Name.Equals(item.ToLower() + "module", StringComparison.CurrentCultureIgnoreCase));
 
-            var commands = moduleInfo.Commands.Select<CommandInfo, string>(command =>
+            var commands = moduleInfo.Commands.Select(command =>
                 $"{prefix}{command.Name} - {command.Summary}"
             ).ToList();
 
@@ -354,8 +340,8 @@ public class MiscModule : ModuleBase<SocketCommandContext>
             command.Aliases.Select(alias => alias.ToLower()).Contains(item.ToLower())))
         {
             // Alternate detected!
-            var commandInfo = _commands.Commands.Single<CommandInfo>(command => command.Aliases.Select(alias => alias.ToLower()).Contains(item.ToLower()));
-            var alternateName = commandInfo.Aliases.Single(alias => alias.ToLower() == item.ToLower());
+            var commandInfo = _commands.Commands.Single(command => command.Aliases.Select(alias => alias.ToLower()).Contains(item.ToLower()));
+            var alternateName = commandInfo.Aliases.Single(alias => alias.Equals(item, StringComparison.CurrentCultureIgnoreCase));
             if (canRunCommand(commandInfo))
             {
                 var ponyReadable = PonyReadableCommandHelp(prefix, item, commandInfo, alternateName);
@@ -367,12 +353,12 @@ public class MiscModule : ModuleBase<SocketCommandContext>
                 $"Sorry, you don't have permission to use the {prefix}{alternateName} command.");
         }
         // Try aliases
-        else if (_config.Aliases.Any(alias => alias.Key.ToLower() == item.ToLower()))
+        else if (_config.Aliases.Any(alias => alias.Key.Equals(item, StringComparison.CurrentCultureIgnoreCase)))
         {
-            var alias = _config.Aliases.First(alias => alias.Key.ToLower() == item.ToLower());
+            var alias = _config.Aliases.First(alias => alias.Key.Equals(item, StringComparison.CurrentCultureIgnoreCase));
             var ponyReadable = $"**{prefix}{alias.Key}** is an alias for **{prefix}{alias.Value}** (see {prefix}config Aliases)\n\n";
 
-            var commandInfo = _commands.Commands.FirstOrDefault(command => command.Name.ToLower() == alias.Value.Split(" ")[0].ToLower());
+            var commandInfo = _commands.Commands.FirstOrDefault(command => command.Name.Equals(alias.Value.Split(' ')[0], StringComparison.CurrentCultureIgnoreCase));
 
             if (commandInfo == null)
             {
@@ -407,14 +393,14 @@ public class MiscModule : ModuleBase<SocketCommandContext>
         }
         else
         {
-            Func<string, bool> isSuggestable = candidate =>
+            bool isSuggestable(string candidate) =>
                 DiscordHelper.WithinLevenshteinDistanceOf(item, candidate, Convert.ToUInt32(candidate.Length / 2));
 
-            Func<string, bool> canRunCommandName = name =>
+            bool canRunCommandName(string name)
             {
                 var cinfo = _commands.Commands.Where(c => c.Name == name).SingleOrDefault((CommandInfo?)null);
-                return cinfo is null ? false : canRunCommand(cinfo);
-            };
+                return cinfo is not null && canRunCommand(cinfo);
+            }
 
             // don't bother searching command.Name because command.Aliases always includes the main name
             var alternateNamesToSuggest = _commands.Commands.Where(canRunCommand)
@@ -435,7 +421,7 @@ public class MiscModule : ModuleBase<SocketCommandContext>
         }
     }
 
-    private string PonyReadableCommandHelp(char prefix, string command, CommandInfo commandInfo, string? alternateName = null)
+    private static string PonyReadableCommandHelp(char prefix, string command, CommandInfo commandInfo, string? alternateName = null)
     {
         var ponyReadable = (alternateName == null ? $"**{prefix}{commandInfo.Name}**" : $"**{prefix}{alternateName}** (alternate name of **{prefix}{commandInfo.Name}**)") +
             $" - {commandInfo.Module.Name.Replace("Module", "")} category\n";
@@ -469,7 +455,9 @@ public class MiscModule : ModuleBase<SocketCommandContext>
         else if (examples.Count() > 1)
             ponyReadable += $"Examples: {string.Join(",  ", examples.Select(e => $"`{e}`"))}";
 
-        var remainingAlternates = commandInfo.Aliases.Where(alternate => alternate.ToLower() != commandInfo.Name.ToLower() && alternate.ToLower() != command.ToLower());
+        var remainingAlternates = commandInfo.Aliases.Where(alternate =>
+                !alternate.Equals(commandInfo.Name, StringComparison.CurrentCultureIgnoreCase) &&
+                !alternate.Equals(command, StringComparison.CurrentCultureIgnoreCase));
         if (remainingAlternates.Any())
             ponyReadable += $"\n" +
                 $"Alternate names: {string.Join(", ", remainingAlternates.Select(alt => $"{prefix}{alt}"))}";
@@ -481,33 +469,31 @@ public class MiscModule : ModuleBase<SocketCommandContext>
     {
         var relevantAliases = _config.Aliases.Where(alias =>
             // be careful not to e.g. make `.help ass` display .assignrole aliases
-            alias.Value.ToLower() == command ||
-                alias.Value.ToLower().StartsWith($"{command} "));
+            alias.Value.Equals(command, StringComparison.CurrentCultureIgnoreCase) ||
+                alias.Value.StartsWith($"{command} ", StringComparison.CurrentCultureIgnoreCase));
 
-        if (relevantAliases.Any())
-            return $"\nRelevant aliases: {string.Join(", ", relevantAliases.Select(alias => $"{prefix}{alias.Key}"))}";
-        else
-            return "";
+        return relevantAliases.Any() ? "" : $"\nRelevant aliases: {string.Join(", ", relevantAliases.Select(alias => $"{prefix}{alias.Key}"))}";
     }
 
     private string PonyReadableSelfSearch(string item, bool isMod, bool isDev, IEnumerable<string>? suggestibles = null)
     {
         var commandDocHits = _commands.Commands
-            .Where(c => {
+            .Where(c =>
+            {
                 if (!CanRunCommand(c, isMod, isDev))
                     return false;
                 if (c.Aliases.Contains(item))
                     return false; // this command is the one we're printing help for, so don't repeat it here
                 if (suggestibles != null && c.Aliases.Any(name => suggestibles.Contains(name)))
                     return false; // this command's already being suggested, so don't repeat it here
-                return PonyReadableCommandHelp(_config.Prefix, c.Name, c).ToLower().Contains(item.ToLower());
+                return PonyReadableCommandHelp(_config.Prefix, c.Name, c).Contains(item, StringComparison.CurrentCultureIgnoreCase);
             })
             .Select(c => $"`.help {c.Name}`");
 
         var configDocHits = Enumerable.Empty<string>();
         if (isMod || isDev)
             configDocHits = _configDescriber.GetSettableConfigItems()
-                .Where(configItemKey => ConfigCommand.ConfigItemDescription(_config, _configDescriber, configItemKey).ToLower().Contains(item.ToLower()))
+                .Where(configItemKey => ConfigCommand.ConfigItemDescription(_config, _configDescriber, configItemKey).Contains(item, StringComparison.CurrentCultureIgnoreCase))
                 .Select(configItemKey => $"`.config {configItemKey}`");
 
         // if we get more than 10 hits, then it was probably something like " " or "the" or "category" that's part of how we format
@@ -518,7 +504,7 @@ public class MiscModule : ModuleBase<SocketCommandContext>
         return "";
     }
 
-    private bool CanRunCommand(CommandInfo cinfo, bool isMod, bool isDev)
+    private static bool CanRunCommand(CommandInfo cinfo, bool isMod, bool isDev)
     {
         var modAttr = cinfo.Preconditions.Any(attribute => attribute is ModCommandAttribute);
         var devAttr = cinfo.Preconditions.Any(attribute => attribute is DevCommandAttribute);

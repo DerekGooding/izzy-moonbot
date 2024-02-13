@@ -1,8 +1,8 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Izzy_Moonbot.Helpers;
-using Izzy_Moonbot.Settings;
-using Izzy_Moonbot.Service;
 using Izzy_Moonbot.Modules;
+using Izzy_Moonbot.Service;
+using Izzy_Moonbot.Settings;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Izzy_Moonbot_Tests.Modules;
 
@@ -19,7 +19,7 @@ public class QuoteModuleTests
 
         // only one quote so that the "random" selection is deterministic for now
         var quotes = new QuoteStorage();
-        quotes.Quotes.Add(sunny.Id.ToString(), [ "gonna be my day" ]);
+        quotes.Quotes.Add(sunny.Id.ToString(), ["gonna be my day"]);
 
         var userinfo = new Dictionary<ulong, User>();
         var qs = new QuoteService(quotes, userinfo);
@@ -107,8 +107,8 @@ public class QuoteModuleTests
         DiscordHelper.DefaultGuildId = guild.Id;
 
         var quotes = new QuoteStorage();
-        quotes.Quotes.Add(sunny.Id.ToString(), [ "gonna be my day", "eat more vegetables" ]);
-        quotes.Quotes.Add(izzy.Id.ToString(), [ "let's unicycle it" ]);
+        quotes.Quotes.Add(sunny.Id.ToString(), ["gonna be my day", "eat more vegetables"]);
+        quotes.Quotes.Add(izzy.Id.ToString(), ["let's unicycle it"]);
         quotes.Quotes.Add(pipp.Id.ToString(), [
             "Heeeey pippsqueaks! <https://youtu.be/CLT4aSurqCg> Check out my latest sooong!",
             "It may looks scary but don't be afraid~ cuz nothin's what it seems at a monster par-tay! https://youtu.be/CLT4aSurqCg"
@@ -205,7 +205,7 @@ public class QuoteModuleTests
 
         // Test with a quote from a user id that is no longer in our guild
         var quotes = new QuoteStorage();
-        quotes.Quotes.Add("1234", [ "minty was here" ]);
+        quotes.Quotes.Add("1234", ["minty was here"]);
 
         var userinfo = new Dictionary<ulong, User>();
         var qs = new QuoteService(quotes, userinfo);
@@ -235,7 +235,7 @@ public class QuoteModuleTests
         DiscordHelper.DefaultGuildId = guild.Id;
 
         var quotes = new QuoteStorage();
-        quotes.Quotes.Add(sunny.Id.ToString(), [ "gonna be my day", "gonna be my day" ]);
+        quotes.Quotes.Add(sunny.Id.ToString(), ["gonna be my day", "gonna be my day"]);
 
         var userinfo = new Dictionary<ulong, User>();
         var qs = new QuoteService(quotes, userinfo);
@@ -268,7 +268,7 @@ public class QuoteModuleTests
         DiscordHelper.DefaultGuildId = guild.Id;
 
         var quotes = new QuoteStorage();
-        quotes.Quotes.Add(sunny.Id.ToString(), [ "gonna be my day" ]);
+        quotes.Quotes.Add(sunny.Id.ToString(), ["gonna be my day"]);
 
         var userinfo = new Dictionary<ulong, User>();
         var qs = new QuoteService(quotes, userinfo);
@@ -350,7 +350,7 @@ public class QuoteModuleTests
         // Celestia hasn't been seen since G4
         var celestiaId = 7;
         var quotes = new QuoteStorage();
-        quotes.Quotes.Add(celestiaId.ToString(), [ "my little ponies" ]);
+        quotes.Quotes.Add(celestiaId.ToString(), ["my little ponies"]);
 
         var userinfo = new Dictionary<ulong, User>();
         var qs = new QuoteService(quotes, userinfo);

@@ -1,20 +1,20 @@
-using System;
+using Izzy_Moonbot.Adapters;
+using Izzy_Moonbot.Settings;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
-using Izzy_Moonbot.Adapters;
 using System.Threading.Tasks;
-using Izzy_Moonbot.Settings;
 
 namespace Izzy_Moonbot.Helpers;
 
-public static class ParseHelper
+public static partial class ParseHelper
 {
     public static (ulong, string)? TryParseUnambiguousUser(string argsString, out string? errorString) =>
         TryParseGenericIdOrMention(argsString, "<@", ">", "user", out errorString);
 
     public static (ulong, string)? TryParseUnambiguousRole(string argsString, out string? errorString) =>
         TryParseGenericIdOrMention(argsString, "<@&", ">", "role", out errorString);
+
     public static (ulong, string)? TryParseUnambiguousChannel(string argsString, out string? errorString) =>
         TryParseGenericIdOrMention(argsString, "<#", ">", "role", out errorString);
 
@@ -38,7 +38,7 @@ public static class ParseHelper
             return null;
         }
 
-        var trimmedArg = firstArg[prefix.Length .. (firstArg.Length - suffix.Length)];
+        var trimmedArg = firstArg[prefix.Length..(firstArg.Length - suffix.Length)];
         if (ulong.TryParse(trimmedArg, out var trimmedResult))
             return (trimmedResult, argsAfterFirst ?? "");
 
@@ -131,7 +131,7 @@ public static class ParseHelper
     // is fundamentally a question only the top-level command handler can answer.
     // So this TryParse*() function cannot do the argsString -> remainingArgsString convenience that most of the others do.
     // Also, because of the inherently async step, we're forced to return a tuple rather than keep errorString as an out parameter
-    async public static Task<(ulong?, string?)> TryParseUserResolvable(string userArg, IIzzyGuild guild)
+    public static async Task<(ulong?, string?)> TryParseUserResolvable(string userArg, IIzzyGuild guild)
     {
         if (TryParseUnambiguousUser(userArg, out var unambiguousErrorString) is var (userId, _))
             return (userId, null);
@@ -305,12 +305,12 @@ public static class ParseHelper
         if (TryParseTimeToken(argTokens[0], out _) is not null)
             return timeError + "\n\n" + footer;
 
-        if (int.TryParse(argTokens[0], out _) || int.TryParse(argTokens[0].Substring(0, argTokens[0].Length - 2), out _))
+        if (int.TryParse(argTokens[0], out _) || int.TryParse(argTokens[0][..^2], out _))
         {
             if (argTokens.Length == 1)
                 return timestampError + "\n\n" + footer;
             else if (argTokens.Length == 2)
-                if (MonthNames.Keys.Contains(argTokens[1].ToLower()))
+                if (_monthNames.ContainsKey(argTokens[1].ToLower()))
                     return dateError + "\n\n" + footer;
                 else
                     return intervalError + "\n\n" + footer;
@@ -330,7 +330,7 @@ public static class ParseHelper
             return null;
         }
 
-        var match = Regex.Match(firstArg, "^<t:(?<epoch>[0-9]+)(:[a-z])?>$", RegexOptions.IgnoreCase);
+        var match = MyRegex().Match(firstArg);
         if (match.Success)
         {
             var epochString = match.Groups["epoch"].Value;
@@ -379,7 +379,7 @@ public static class ParseHelper
             return null;
         }
 
-        var unitMatch = Regex.Match(secondArg, "^(?<unit>year|month|day|week|hour|minute|second)s?$", RegexOptions.IgnoreCase);
+        var unitMatch = MyRegex1().Match(secondArg);
         if (!unitMatch.Success)
         {
             errorString = $"\"{secondArg}\" is not one of the supported date/time interval units: year(s), month(s), day(s), week(s), hour(s), minute(s), second(s)";
@@ -406,13 +406,13 @@ public static class ParseHelper
     public static (TimeSpan, string)? TryParseOffset(string argsString, out string? errorString)
     {
         var args = DiscordHelper.GetArguments(argsString);
-        if (!args.Arguments.Any())
+        if (args.Arguments.Length == 0)
         {
             errorString = $"empty or all-whitespace string \"{argsString}\" can't be a time token";
             return null;
         }
 
-        var offsetRegex = new Regex("^UTC(?<sign>\\+|-)(?<hours>\\d\\d?)(\\:(?<minutes>\\d\\d))?$", RegexOptions.IgnoreCase);
+        var offsetRegex = MyRegex2();
         var match = offsetRegex.Match(args.Arguments[0]);
         if (!match.Success)
         {
@@ -441,13 +441,13 @@ public static class ParseHelper
     public static (int, int, string)? TryParseTimeToken(string argsString, out string? errorString)
     {
         var args = DiscordHelper.GetArguments(argsString);
-        if (!args.Arguments.Any())
+        if (args.Arguments.Length == 0)
         {
             errorString = $"empty or all-whitespace string \"{argsString}\" can't be a time token";
             return null;
         }
 
-        var timeRegex = new Regex("^(?<hour>\\d\\d|\\d)(:(?<minute>\\d\\d))?(?<period>am|pm)?$", RegexOptions.IgnoreCase);
+        var timeRegex = MyRegex3();
         var match = timeRegex.Match(args.Arguments[0]);
         if (!match.Success)
         {
@@ -458,9 +458,9 @@ public static class ParseHelper
         var hourInt = int.Parse(match.Groups["hour"].Value);
 
         var period = match.Groups["period"].Value;
-        if (period.ToLower() == "pm" && (hourInt >= 1 && hourInt <= 11))
+        if (period.Equals("pm", StringComparison.CurrentCultureIgnoreCase) && (hourInt >= 1 && hourInt <= 11))
             hourInt += 12;
-        else if (period.ToLower() == "am" && hourInt == 12)
+        else if (period.Equals("am", StringComparison.CurrentCultureIgnoreCase) && hourInt == 12)
             hourInt = 0;
 
         var minuteInt = 0;
@@ -505,7 +505,7 @@ public static class ParseHelper
         return (dto, argsAfterOffset);
     }
 
-    private static Dictionary<string, int> WeekdayNames = new() {
+    private static readonly Dictionary<string, int> _weekdayNames = new() {
         { "sunday", 0 },
         { "monday", 1 },
         { "tuesday", 2 },
@@ -525,19 +525,19 @@ public static class ParseHelper
     public static (DateTimeOffset, string)? TryParseWeekdayTime(string argsString, out string? errorString)
     {
         var args = DiscordHelper.GetArguments(argsString);
-        if (!args.Arguments.Any())
+        if (args.Arguments.Length == 0)
         {
             errorString = $"empty or all-whitespace string \"{argsString}\" can't be a weekday + time";
             return null;
         }
 
         var weekdayToken = args.Arguments[0].ToLower();
-        if (!WeekdayNames.Keys.Contains(weekdayToken))
+        if (!_weekdayNames.TryGetValue(weekdayToken, out int value))
         {
             errorString = $"\"{weekdayToken}\" is not one of the supported weekday names: sun(day), mon(day), tue(sday), wed(nesday), thu(rsday), fri(day), sat(urday)";
             return null;
         }
-        var weekdayInt = WeekdayNames[weekdayToken];
+        var weekdayInt = value;
 
         var argsAfterWeekday = string.Join("", argsString.Skip(args.Indices[0]));
         if (argsAfterWeekday.Trim() == "")
@@ -577,15 +577,15 @@ public static class ParseHelper
 
     public static int? TryParseDateToken(string dateToken, out string? errorString)
     {
-        int dateInt;
-        bool isInt = int.TryParse(dateToken, out dateInt);
+        bool isInt = int.TryParse(dateToken, out int dateInt);
 
         // support "st"/"nd"/"rd"/"th" suffixes without advertising them
         bool isIntWithSuffix = false;
         if (!isInt)
-            isIntWithSuffix = dateToken.Length >= 2 && int.TryParse(dateToken.Substring(0, dateToken.Length - 2), out dateInt);
+            isIntWithSuffix = dateToken.Length >= 2 && int.TryParse(dateToken[..^2], out dateInt);
 
-        if (!isInt && !isIntWithSuffix) {
+        if (!isInt && !isIntWithSuffix)
+        {
             errorString = $"\"{dateToken}\" is not a positive integer";
             return null;
         }
@@ -604,7 +604,7 @@ public static class ParseHelper
         return dateInt;
     }
 
-    private static Dictionary<string, int> MonthNames = new() {
+    private static readonly Dictionary<string, int> _monthNames = new() {
         { "january", 1 },
         { "jan", 1 },
         { "february", 2 },
@@ -633,21 +633,21 @@ public static class ParseHelper
     public static int? TryParseMonthToken(string inputMonthToken, out string? errorString)
     {
         var monthToken = inputMonthToken.ToLower();
-        if (!MonthNames.Keys.Contains(monthToken))
+        if (!_monthNames.TryGetValue(monthToken, out int value))
         {
             errorString = $"\"{monthToken}\" is not one of the supported month names: jan(uary), feb(ruary), mar(ch), apr(il), may, jun(e), jul(y), aug(ust), sep(tember), oct(ober), nov(ember), dec(ember)";
             return null;
         }
 
         errorString = null;
-        return MonthNames[monthToken];
+        return value;
     }
 
     // same as TryParseAbsoluteDateTime, but without the year part
     public static (DateTimeOffset, string)? TryParseDayMonthTime(string argsString, out string? errorString)
     {
         var args = DiscordHelper.GetArguments(argsString);
-        if (!args.Arguments.Any())
+        if (args.Arguments.Length == 0)
         {
             errorString = $"empty or all-whitespace string \"{argsString}\" can't be a date + time";
             return null;
@@ -696,7 +696,7 @@ public static class ParseHelper
     public static (DateTimeOffset, string)? TryParseAbsoluteDateTime(string argsString, out string? errorString)
     {
         var args = DiscordHelper.GetArguments(argsString);
-        if (!args.Arguments.Any())
+        if (args.Arguments.Length == 0)
         {
             errorString = $"empty or all-whitespace string \"{argsString}\" can't be a date + time";
             return null;
@@ -756,16 +756,22 @@ public static class ParseHelper
         errorString = null;
         return (dto, argsAfterOffset);
     }
+
+    [GeneratedRegex("^<t:(?<epoch>[0-9]+)(:[a-z])?>$", RegexOptions.IgnoreCase, "en-CA")]
+    private static partial Regex MyRegex();
+
+    [GeneratedRegex("^(?<unit>year|month|day|week|hour|minute|second)s?$", RegexOptions.IgnoreCase, "en-CA")]
+    private static partial Regex MyRegex1();
+
+    [GeneratedRegex("^UTC(?<sign>\\+|-)(?<hours>\\d\\d?)(\\:(?<minutes>\\d\\d))?$", RegexOptions.IgnoreCase, "en-CA")]
+    private static partial Regex MyRegex2();
+
+    [GeneratedRegex("^(?<hour>\\d\\d|\\d)(:(?<minute>\\d\\d))?(?<period>am|pm)?$", RegexOptions.IgnoreCase, "en-CA")]
+    private static partial Regex MyRegex3();
 }
 
-public class ParseDateTimeResult
+public class ParseDateTimeResult(DateTimeOffset time, ScheduledJobRepeatType repeatType)
 {
-    public ScheduledJobRepeatType RepeatType;
-    public DateTimeOffset Time;
-
-    public ParseDateTimeResult(DateTimeOffset time, ScheduledJobRepeatType repeatType)
-    {
-        Time = time;
-        RepeatType = repeatType;
-    }
+    public ScheduledJobRepeatType RepeatType = repeatType;
+    public DateTimeOffset Time = time;
 }

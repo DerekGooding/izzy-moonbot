@@ -1,14 +1,13 @@
-using System;
-using System.Collections.Generic;
 using Izzy_Moonbot.EventListeners;
 using Izzy_Moonbot.Types;
+using System.Collections.Generic;
 
 namespace Izzy_Moonbot.Settings;
 
 public class Config
 {
     public event EventHandler<ConfigValueChangeEvent>? Changed;
-    
+
     public Config()
     {
         // Setup settings
@@ -20,39 +19,39 @@ public class Config
         // Misc settings
         UnicycleInterval = 100;
         MentionResponseEnabled = false;
-        MentionResponses = new HashSet<string>();
+        MentionResponses = [];
         MentionResponseCooldown = 600;
         DiscordActivityName = "you all soon";
         DiscordActivityWatching = true;
-        Aliases = new Dictionary<string, string>();
+        Aliases = [];
         FirstRuleMessageId = 0;
-        HiddenRules = new Dictionary<string, string>();
+        HiddenRules = [];
         BestPonyChannel = 0;
         RecentMessagesPerUser = 10;
 
         // Banner settings
         _bannerMode = ConfigListener.BannerMode.None;
         _bannerInterval = 60;
-        BannerImages = new HashSet<string>();
+        BannerImages = [];
 
         // ManagedRoles settings
         ManageNewUserRoles = false;
         MemberRole = 0;
         NewMemberRole = 0;
         NewMemberRoleDecay = 0;
-        RolesToReapplyOnRejoin = new HashSet<ulong>();
+        RolesToReapplyOnRejoin = [];
 
         // Filter Settings
         FilterEnabled = true;
-        FilterIgnoredChannels = new HashSet<ulong>();
-        FilterBypassRoles = new HashSet<ulong>();
+        FilterIgnoredChannels = [];
+        FilterBypassRoles = [];
         FilterDevBypass = true;
-        FilterWords = new HashSet<string>();
+        FilterWords = [];
 
         // Spam settings
         SpamEnabled = true;
-        SpamBypassRoles = new HashSet<ulong>();
-        SpamIgnoredChannels = new HashSet<ulong>();
+        SpamBypassRoles = [];
+        SpamIgnoredChannels = [];
         SpamDevBypass = true;
         SpamBasePressure = 10.0;
         SpamImagePressure = 8.3;
@@ -77,22 +76,23 @@ public class Config
         // Bored settings
         _boredChannel = 0;
         _boredCooldown = 300;
-        BoredCommands = new HashSet<string>();
+        BoredCommands = [];
 
         // Witty settings
-        Witties = new Dictionary<string, string>();
-        WittyChannels = new HashSet<ulong>();
+        Witties = [];
+        WittyChannels = [];
         WittyCooldown = 300;
 
         // Monitoring settings
         MonitoringEnabled = true;
         MonitoringChannel = 0;
         MonitoringMessageInterval = 10080; // 7 days in minutes
-        MonitoringBypassRoles = new HashSet<ulong>();
+        MonitoringBypassRoles = [];
     }
 
     // Core settings
     public char Prefix { get; set; }
+
     public int UnicycleInterval { get; set; }
     public bool MentionResponseEnabled { get; set; }
     public HashSet<string> MentionResponses { get; set; }
@@ -106,8 +106,10 @@ public class Config
     public int RecentMessagesPerUser { get; set; }
 
     // Server settings
-    private ConfigListener.BannerMode _bannerMode { get; set; }
-    public ConfigListener.BannerMode BannerMode {
+    private ConfigListener.BannerMode _bannerMode;
+
+    public ConfigListener.BannerMode BannerMode
+    {
         get => _bannerMode;
         set
         {
@@ -116,7 +118,9 @@ public class Config
             _bannerMode = value;
         }
     }
-    private double _bannerInterval { get; set; }
+
+    private double _bannerInterval;
+
     public double BannerInterval
     {
         get => _bannerInterval;
@@ -127,16 +131,18 @@ public class Config
             _bannerInterval = value;
         }
     }
+
     public HashSet<string> BannerImages { get; set; }
-    
 
     // Moderation settings
     public ulong ModRole { get; set; }
+
     public ulong ModChannel { get; set; }
     public ulong LogChannel { get; set; }
 
     // User based settings
     public bool ManageNewUserRoles { get; set; }
+
     public ulong? MemberRole { get; set; }
     public ulong? NewMemberRole { get; set; }
     public double NewMemberRoleDecay { get; set; }
@@ -144,6 +150,7 @@ public class Config
 
     // Filter settings
     public bool FilterEnabled { get; set; }
+
     public HashSet<ulong> FilterIgnoredChannels { get; set; }
     public HashSet<ulong> FilterBypassRoles { get; set; }
     public bool FilterDevBypass { get; set; }
@@ -151,6 +158,7 @@ public class Config
 
     // Pressure settings
     public bool SpamEnabled { get; set; }
+
     public HashSet<ulong> SpamBypassRoles { get; set; }
     public HashSet<ulong> SpamIgnoredChannels { get; set; }
     public bool SpamDevBypass { get; set; }
@@ -167,6 +175,7 @@ public class Config
 
     // Raid settings
     public bool RaidProtectionEnabled { get; set; }
+
     public bool AutoSilenceNewJoins { get; set; }
     public int SmallRaidSize { get; set; }
     public int LargeRaidSize { get; set; }
@@ -175,7 +184,8 @@ public class Config
     public double? LargeRaidDecay { get; set; }
 
     // Bored settings
-    private ulong _boredChannel { get; set; }
+    private ulong _boredChannel;
+
     public ulong BoredChannel
     {
         get => _boredChannel;
@@ -186,7 +196,9 @@ public class Config
             _boredChannel = value;
         }
     }
-    private double _boredCooldown { get; set; }
+
+    private double _boredCooldown;
+
     public double BoredCooldown
     {
         get => _boredCooldown;
@@ -197,15 +209,18 @@ public class Config
             _boredCooldown = value;
         }
     }
+
     public HashSet<string> BoredCommands { get; set; }
 
     // Witty settings
     public Dictionary<string, string> Witties { get; set; }
+
     public HashSet<ulong> WittyChannels { get; set; }
     public double WittyCooldown { get; set; }
 
     // Monitoring settings
     public bool MonitoringEnabled { get; set; }
+
     public ulong MonitoringChannel { get; set; }
     public ulong MonitoringMessageInterval { get; set; }
     public HashSet<ulong> MonitoringBypassRoles { get; set; }

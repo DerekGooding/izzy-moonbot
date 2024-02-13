@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
@@ -13,57 +8,46 @@ using Izzy_Moonbot.Helpers;
 using Izzy_Moonbot.Service;
 using Izzy_Moonbot.Settings;
 using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Izzy_Moonbot.Modules;
 
 [Summary("Development commands.")]
-public class DevModule : ModuleBase<SocketCommandContext>
+public class DevModule(Config config, Dictionary<ulong, User> users, FilterService filterService,
+    LoggingService loggingService, ModLoggingService modLoggingService, ModService modService,
+    SpamService pressureService, RaidService raidService, ScheduleService scheduleService, TransientState state) : ModuleBase<SocketCommandContext>
 {
-    private readonly FilterService _filterService;
-    private readonly LoggingService _loggingService;
-    private readonly ModLoggingService _modLoggingService;
-    private readonly ModService _modService;
-    private readonly SpamService _pressureService;
-    private readonly RaidService _raidService;
-    private readonly ScheduleService _scheduleService;
-    private readonly Config _config;
-    private readonly TransientState _state;
-    private readonly Dictionary<ulong, User> _users;
-
-    public DevModule(Config config, Dictionary<ulong, User> users, FilterService filterService,
-        LoggingService loggingService, ModLoggingService modLoggingService, ModService modService,
-        SpamService pressureService, RaidService raidService, ScheduleService scheduleService, TransientState state)
-    {
-        _config = config;
-        _users = users;
-        _filterService = filterService;
-        _loggingService = loggingService;
-        _modLoggingService = modLoggingService;
-        _modService = modService;
-        _pressureService = pressureService;
-        _raidService = raidService;
-        _scheduleService = scheduleService;
-        _state = state;
-    }
+    private readonly FilterService _filterService = filterService;
+    private readonly LoggingService _loggingService = loggingService;
+    private readonly ModLoggingService _modLoggingService = modLoggingService;
+    private readonly ModService _modService = modService;
+    private readonly SpamService _pressureService = pressureService;
+    private readonly RaidService _raidService = raidService;
+    private readonly ScheduleService _scheduleService = scheduleService;
+    private readonly Config _config = config;
+    private readonly TransientState _state = state;
+    private readonly Dictionary<ulong, User> _users = users;
 
     [NamedArgumentType]
     public class TypeTestArguments
     {
-        public bool? boolean { get; set; }
-        public char? character { get; set; }
-        public byte? nom { get; set; }
-        public short? pipp { get; set; }
-        public int? integer { get; set; }
-        public long? starlight { get; set; }
-        public double? rainboom { get; set; }
-        public string? single { get; set; }
-        public string? multiword { get; set; }
-        public TestEnum? how { get; set; }
-        public DateTimeOffset? time { get; set; }
-        public SocketTextChannel? channel { get; set; }
-        public SocketGuildUser? user { get; set; }
-        public SocketUserMessage? message { get; set; }
-        public SocketRole? role { get; set; }
+        public bool? Boolean { get; set; }
+        public char? Character { get; set; }
+        public byte? Nom { get; set; }
+        public short? Pipp { get; set; }
+        public int? Integer { get; set; }
+        public long? Starlight { get; set; }
+        public double? Rainboom { get; set; }
+        public string? Single { get; set; }
+        public string? Multiword { get; set; }
+        public TestEnum? How { get; set; }
+        public DateTimeOffset? Time { get; set; }
+        public SocketTextChannel? Channel { get; set; }
+        public SocketGuildUser? User { get; set; }
+        public SocketUserMessage? Message { get; set; }
+        public SocketRole? Role { get; set; }
     }
 
     [Command("typetest")]
@@ -73,26 +57,26 @@ public class DevModule : ModuleBase<SocketCommandContext>
     {
         var testsCompleted = new Dictionary<string, string?>();
 
-        if (tests.boolean.HasValue) testsCompleted.Add("bool", tests.boolean.Value.ToString());
-        if (tests.character.HasValue) testsCompleted.Add("char", tests.character.Value.ToString());
-        if (tests.nom.HasValue) testsCompleted.Add("byte", tests.nom.Value.ToString());
-        if (tests.pipp.HasValue) testsCompleted.Add("short", tests.pipp.Value.ToString());
-        if (tests.integer.HasValue) testsCompleted.Add("int", tests.integer.Value.ToString());
-        if (tests.starlight.HasValue) testsCompleted.Add("long", tests.starlight.Value.ToString());
-        if (tests.rainboom.HasValue) testsCompleted.Add("double", tests.rainboom.Value.ToString());
-        if (tests.single != null) testsCompleted.Add("string (single)", tests.single);
-        if (tests.multiword != null) testsCompleted.Add("string (multiple)", tests.multiword);
-        if (tests.how.HasValue) testsCompleted.Add("enum", tests.how.Value.ToString());
-        if (tests.time.HasValue) testsCompleted.Add("datetimeoffset", tests.time.Value.ToString());
-        if (tests.channel != null) testsCompleted.Add("channel", tests.channel.Name);
-        if (tests.user != null) testsCompleted.Add("user", tests.user.DisplayName);
-        if (tests.message != null) testsCompleted.Add("message", tests.message.GetJumpUrl());
-        if (tests.role != null) testsCompleted.Add("role", tests.role.Name);
+        if (tests.Boolean.HasValue) testsCompleted.Add("bool", tests.Boolean.Value.ToString());
+        if (tests.Character.HasValue) testsCompleted.Add("char", tests.Character.Value.ToString());
+        if (tests.Nom.HasValue) testsCompleted.Add("byte", tests.Nom.Value.ToString());
+        if (tests.Pipp.HasValue) testsCompleted.Add("short", tests.Pipp.Value.ToString());
+        if (tests.Integer.HasValue) testsCompleted.Add("int", tests.Integer.Value.ToString());
+        if (tests.Starlight.HasValue) testsCompleted.Add("long", tests.Starlight.Value.ToString());
+        if (tests.Rainboom.HasValue) testsCompleted.Add("double", tests.Rainboom.Value.ToString());
+        if (tests.Single != null) testsCompleted.Add("string (single)", tests.Single);
+        if (tests.Multiword != null) testsCompleted.Add("string (multiple)", tests.Multiword);
+        if (tests.How.HasValue) testsCompleted.Add("enum", tests.How.Value.ToString());
+        if (tests.Time.HasValue) testsCompleted.Add("datetimeoffset", tests.Time.Value.ToString());
+        if (tests.Channel != null) testsCompleted.Add("channel", tests.Channel.Name);
+        if (tests.User != null) testsCompleted.Add("user", tests.User.DisplayName);
+        if (tests.Message != null) testsCompleted.Add("message", tests.Message.GetJumpUrl());
+        if (tests.Role != null) testsCompleted.Add("role", tests.Role.Name);
 
         var resultToPrint = testsCompleted.Select(pair => $"{pair.Key}: {pair.Value}");
-        
+
         await ReplyAsync($"Type testing results: \n" +
-                         $"{String.Join('\n', resultToPrint)}");
+                         $"{string.Join('\n', resultToPrint)}");
     }
 
     public enum TestEnum
@@ -122,9 +106,11 @@ public class DevModule : ModuleBase<SocketCommandContext>
 
                 var paginationHelper = new PaginationHelper(Context, pages, staticParts);
                 break;
+
             case "dump-users-size":
                 await Context.Message.ReplyAsync($"UserStore size: {_users.Count}");
                 break;
+
             case "create-echo-task":
                 var action = new ScheduledEchoJob(Context.Channel.Id,
                     "Hello! Exactly 1 minute should have passed between the test command and this message!");
@@ -133,6 +119,7 @@ public class DevModule : ModuleBase<SocketCommandContext>
                 await _scheduleService.CreateScheduledJob(task);
                 await Context.Message.ReplyAsync("Created scheduled task.");
                 break;
+
             case "test-twilight":
                 await Context.Channel.SendMessageAsync(
                     $"Dear Princess Twilight,\n```\n" +
@@ -143,6 +130,7 @@ public class DevModule : ModuleBase<SocketCommandContext>
                     "[2022-07-30 00:19:07 ERR] Stack trace:    at Discord.ConnectionManager.<>c__DisplayClass29_0.<<StartAsync>b__0>d.MoveNext()" +
                     $"\n```Your faithful Bot,\nIzzy Moonbot");
                 break;
+
             case "twilight":
                 await Context.Guild.GetTextChannel(1002687344199094292).SendMessageAsync(
                     $"Dear Princess Twilight,\n```\n" +
@@ -154,26 +142,32 @@ public class DevModule : ModuleBase<SocketCommandContext>
                     $"\n```Your faithful Bot,\nIzzy Moonbot");
 
                 break;
+
             case "state":
                 _state.CurrentSmallJoinCount++;
                 await ReplyAsync($"At {_state.CurrentSmallJoinCount}.");
                 break;
+
             case "asyncSyncTesk":
                 Console.WriteLine("Application executing on thread {0}",
-                    Thread.CurrentThread.ManagedThreadId);
-                var asyncTask = Task.Run( () => {  Console.WriteLine("Task {0} (asyncTask) executing on Thread {1}",
+                    Environment.CurrentManagedThreadId);
+                var asyncTask = Task.Run(() =>
+                {
+                    Console.WriteLine("Task {0} (asyncTask) executing on Thread {1}",
                         Task.CurrentId,
-                        Thread.CurrentThread.ManagedThreadId);
+                        Environment.CurrentManagedThreadId);
                     long sum = 0;
-                    for (int ctr = 1; ctr <= 1000000; ctr++ )
+                    for (int ctr = 1; ctr <= 1000000; ctr++)
                         sum += ctr;
                     return sum;
                 });
-                var syncTask = new Task<long>( () =>  { Console.WriteLine("Task {0} (syncTask) executing on Thread {1}",
+                var syncTask = new Task<long>(() =>
+                {
+                    Console.WriteLine("Task {0} (syncTask) executing on Thread {1}",
                         Task.CurrentId,
-                        Thread.CurrentThread.ManagedThreadId);
+                        Environment.CurrentManagedThreadId);
                     long sum = 0;
-                    for (int ctr = 1; ctr <= 1000000; ctr++ )
+                    for (int ctr = 1; ctr <= 1000000; ctr++)
                         sum += ctr;
                     return sum;
                 });
@@ -182,6 +176,7 @@ public class DevModule : ModuleBase<SocketCommandContext>
                 Console.WriteLine("Task {0} returned {1:N0}", syncTask.Id, syncTask.Result);
                 Console.WriteLine("Task {0} returned {1:N0}", asyncTask.Id, asyncTask.Result);
                 break;
+
             case "overloadFilter":
                 {
                     var izzyContext = new SocketCommandContextAdapter(Context);
@@ -192,12 +187,14 @@ public class DevModule : ModuleBase<SocketCommandContext>
                     break;
                 }
             case "logTest":
-                var pressureTracer = new Dictionary<string, double>{ {"Base", _config.SpamBasePressure} };
+                var pressureTracer = new Dictionary<string, double> { { "Base", _config.SpamBasePressure } };
                 _loggingService.Log($"Pressure increase by 0 to 0/{_config.SpamMaxPressure}.\n                          Pressure trace: {string.Join(", ", pressureTracer)}", Context, level: LogLevel.Debug);
                 break;
+
             case "invitesDisabled":
                 await ReplyAsync("Invites disabled: " + Context.Guild.Features.HasFeature("INVITES_DISABLED"));
                 break;
+
             case "parsehelper":
                 if (ParseHelper.TryParseDateTime(argString, out var err) is not var (time, remainingArgsString))
                 {
@@ -211,6 +208,7 @@ public class DevModule : ModuleBase<SocketCommandContext>
                         $"{(time.RepeatType is ScheduledJobRepeatType.None ? "" : $" repeating {time.RepeatType}")}\n" +
                     $"with remainingArgsString: \"{remainingArgsString}\"");
                 break;
+
             case "customArgument":
                 var customArgument_Result = DiscordHelper.GetArguments(argString);
 
@@ -218,11 +216,13 @@ public class DevModule : ModuleBase<SocketCommandContext>
                                  $"{string.Join(", ", customArgument_Result)}" +
                                  $"\n```");
                 break;
+
             case "listEnum":
                 var enumNames = Enum.GetNames<TestEnum>();
 
                 await ReplyAsync($"```\n{string.Join(", ", enumNames)}\n```");
                 break;
+
             case "parseEnum":
                 if (!Enum.TryParse<TestEnum>(args[0], out var testEnum))
                 {
@@ -232,11 +232,13 @@ public class DevModule : ModuleBase<SocketCommandContext>
 
                 await ReplyAsync($"Parse success. `{testEnum}`");
                 break;
+
             case "parseImage":
                 var attachment = new FileAttachment(args[0].GetStreamAsync().Result, "test.png");
 
                 await Context.Channel.SendFileAsync(attachment, "Test Success");
                 break;
+
             default:
                 await Context.Message.ReplyAsync("Unknown test.");
                 break;

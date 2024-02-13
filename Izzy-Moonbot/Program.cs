@@ -1,4 +1,3 @@
-using System;
 using Izzy_Moonbot.Describers;
 using Izzy_Moonbot.EventListeners;
 using Izzy_Moonbot.Helpers;
@@ -17,25 +16,25 @@ public class Program
     {
         var loggerConfig = new LoggerConfiguration().Enrich.FromLogContext().WriteTo
             .Console(outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}");
-        
-        #if DEBUG
-            // Verbose debug logging.
-            loggerConfig = loggerConfig.MinimumLevel.Verbose();
-        #else
+
+#if DEBUG
+        // Verbose debug logging.
+        loggerConfig = loggerConfig.MinimumLevel.Verbose();
+#else
             // Normal logging
             loggerConfig = loggerConfig.MinimumLevel.Verbose();
-        #endif
-            
+#endif
+
         Log.Logger = loggerConfig.CreateLogger();
 
         try
         {
             Log.Information("Starting up");
-            #if DEBUG
+#if DEBUG
             CreateHostBuilder(args).UseEnvironment("Development").Build().Run();
-            #else
+#else
             CreateHostBuilder(args).UseEnvironment("Production").Build().Run();
-            #endif
+#endif
         }
         catch (Exception ex)
         {
@@ -86,7 +85,7 @@ public class Program
             services.AddSingleton<QuoteService>();
             services.AddSingleton<MonitoringService>();
             services.AddSingleton(services);
-            
+
             // EventListeners
             services.AddSingleton<ConfigListener>();
             services.AddSingleton<UserListener>();

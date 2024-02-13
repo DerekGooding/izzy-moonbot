@@ -13,13 +13,15 @@ public class FilterServiceTests
     public static void SetupFilterService(Config cfg, StubGuild guild, StubClient client, IIzzyUser sunny)
     {
         DiscordHelper.DefaultGuildId = guild.Id;
-        DiscordHelper.DevUserIds = new List<ulong>();
+        DiscordHelper.DevUserIds = [];
         DiscordHelper.PleaseAwaitEvents = true;
 
         // FilterService assumes that every MessageReceived event it receives is for
         // a user who is already in the users Dictionary
-        var users = new Dictionary<ulong, User>();
-        users[sunny.Id] = new User();
+        var users = new Dictionary<ulong, User>
+        {
+            [sunny.Id] = new User()
+        };
 
         var mod = new ModService(cfg, users);
         var modLog = new ModLoggingService(cfg);
@@ -34,7 +36,7 @@ public class FilterServiceTests
     {
         var (cfg, _, (_, sunny), _, (generalChannel, modChat, _), guild, client) = TestUtils.DefaultStubs();
         cfg.ModChannel = modChat.Id;
-        cfg.FilterWords = [ "magic", "wing", "feather", "mayonnaise" ];
+        cfg.FilterWords = ["magic", "wing", "feather", "mayonnaise"];
         SetupFilterService(cfg, guild, client, sunny);
 
         await client.AddMessageAsync(guild.Id, generalChannel.Id, sunny.Id, "this is a completely ordinary chat message");
@@ -66,7 +68,7 @@ public class FilterServiceTests
     {
         var (cfg, _, (_, sunny), _, (generalChannel, modChat, _), guild, client) = TestUtils.DefaultStubs();
         cfg.ModChannel = modChat.Id;
-        cfg.FilterWords = [ "magic", "wing", "feather", "mayonnaise" ];
+        cfg.FilterWords = ["magic", "wing", "feather", "mayonnaise"];
         SetupFilterService(cfg, guild, client, sunny);
 
         Assert.AreEqual(0, modChat.Messages.Count);

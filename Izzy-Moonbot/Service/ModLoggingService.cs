@@ -1,46 +1,32 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Threading.Tasks;
 using Discord;
 using Discord.WebSocket;
 using Izzy_Moonbot.Adapters;
 using Izzy_Moonbot.Helpers;
 using Izzy_Moonbot.Settings;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
 
 namespace Izzy_Moonbot.Service;
 
 // name credit to Scoots <3
 
-public class ModLoggingService
+public class ModLoggingService(Config config)
 {
-    private readonly Config _config;
-    private readonly BatchLogger _batchLogger;
+    private readonly Config _config = config;
+    private readonly BatchLogger _batchLogger = new();
 
-    public ModLoggingService(Config config)
-    {
-        _config = config;
-        _batchLogger = new BatchLogger();
-    }
+    public ModLogBuilder CreateModLog(SocketGuild guild) => CreateModLog(new SocketGuildAdapter(guild));
 
-    public ModLogBuilder CreateModLog(SocketGuild guild)
-    {
-        return CreateModLog(new SocketGuildAdapter(guild));
-    }
-    public ModLogBuilder CreateModLog(IIzzyGuild guild)
-    {
-        return new ModLogBuilder(_config, guild, _batchLogger);
-    }
+    public ModLogBuilder CreateModLog(IIzzyGuild guild) => new(_config, guild, _batchLogger);
 }
 
-public class ModLog
+public class ModLog(IIzzySocketTextChannel channel)
 {
-    public IIzzySocketTextChannel Channel;
+    public IIzzySocketTextChannel Channel = channel;
     public string? Content;
     public Embed? Embed;
     public string? FileLogContent;
-
-    public ModLog(IIzzySocketTextChannel channel) { Channel = channel; }
 }
 
 public class ModLogBuilder
@@ -57,8 +43,7 @@ public class ModLogBuilder
         _guild = guild;
         _batchLogger = batchLogger;
 
-        var modChannel = _guild.GetTextChannel(_config.ModChannel);
-        if (modChannel == null)
+        var modChannel = _guild.GetTextChannel(_config.ModChannel) ??
             throw new InvalidOperationException($"Failed to get mod channel from config value {_config.ModChannel}");
         _log = new ModLog(modChannel);
     }
@@ -84,7 +69,7 @@ public class ModLogBuilder
     public async Task Send()
     {
         if (_log.Content == null && _log.Embed == null) throw new InvalidOperationException("A moderation log cannot have no content");
-        
+
         // Log to file
         if (_log.FileLogContent is string fileLogContent)
         {
@@ -102,13 +87,13 @@ public class ModLogBuilder
         if (_config.AutoSilenceNewJoins)
             _batchLogger.AddModLog(_log);
         else
-            await _log.Channel.SendMessageAsync(_log.Content ?? "", embeds: _log.Embed != null ? new []{ _log.Embed } : null);
+            await _log.Channel.SendMessageAsync(_log.Content ?? "", embeds: _log.Embed != null ? [_log.Embed] : null);
     }
 }
 
 public class BatchLogger
 {
-    private readonly List<ModLog> _modLogs = new();
+    private readonly List<ModLog> _modLogs = [];
 
     private static readonly int _batchLogsSendRate = 10_000; // 10 seconds
 
@@ -140,9 +125,9 @@ public class BatchLogger
             }
 
             if (modLogChannel != null)
-                await modLogChannel.SendMessageAsync(string.Join($"\n", modLogContent),
-                    embeds: modLogEmbeds.ToArray());
-            
+                await modLogChannel.SendMessageAsync(string.Join('\n', modLogContent),
+                    embeds: [.. modLogEmbeds]);
+
             _modLogs.Clear();
 
             RefreshBatchInterval();

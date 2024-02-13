@@ -1,4 +1,3 @@
-
 using Discord;
 using Izzy_Moonbot.Adapters;
 using Izzy_Moonbot.Describers;
@@ -24,20 +23,20 @@ public static class TestUtils
         var users = new List<StubGuildUser> { izzyHerself, sunny, zipp, pipp, hitch };
 
         var alicorn = new TestRole("Alicorn", 1);
-        List<TestRole> roles = [ alicorn, new TestRole("Pegasus", 2) ];
+        List<TestRole> roles = [alicorn, new TestRole("Pegasus", 2)];
 
         // because user ids are also Direct Message channel ids, regular channels must have different ids
         var generalChannel = new StubChannel(1001, "general");
         var modChat = new StubChannel(1002, "modchat");
         var logChat = new StubChannel(1003, "botlogs");
-        List<StubChannel> channels = [ generalChannel, modChat, logChat ];
+        List<StubChannel> channels = [generalChannel, modChat, logChat];
 
         var guild = new StubGuild(1, "Maretime Bay", roles, users, channels);
-        guild.UserRoles.Add(sunny.Id, [ alicorn.Id ]);
-        guild.UserRoles.Add(izzyHerself.Id, [ alicorn.Id ]); // bots are honorary alicorns
+        guild.UserRoles.Add(sunny.Id, [alicorn.Id]);
+        guild.UserRoles.Add(izzyHerself.Id, [alicorn.Id]); // bots are honorary alicorns
         guild.ChannelAccessRole.Add(modChat.Id, alicorn.Id);
 
-        var client = new StubClient(izzyHerself, [ guild ]);
+        var client = new StubClient(izzyHerself, [guild]);
 
         var cfg = new Config();
         var cd = new ConfigDescriber();

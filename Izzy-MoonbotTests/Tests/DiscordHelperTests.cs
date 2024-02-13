@@ -1,4 +1,3 @@
-using Izzy_Moonbot.Helpers;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using static Izzy_Moonbot.Helpers.DiscordHelper;
 
@@ -10,115 +9,115 @@ public class DiscordHelperTests
     [TestMethod()]
     public void MiscTests()
     {
-        Assert.IsTrue(DiscordHelper.IsSpace(' '));
-        Assert.IsFalse(DiscordHelper.IsSpace('a'));
+        Assert.IsTrue(IsSpace(' '));
+        Assert.IsFalse(IsSpace('a'));
     }
 
     [TestMethod()]
     public void StripQuotesTests()
     {
-        Assert.AreEqual("", DiscordHelper.StripQuotes(""));
-        Assert.AreEqual("a", DiscordHelper.StripQuotes("a"));
-        Assert.AreEqual("ab", DiscordHelper.StripQuotes("ab"));
+        Assert.AreEqual("", StripQuotes(""));
+        Assert.AreEqual("a", StripQuotes("a"));
+        Assert.AreEqual("ab", StripQuotes("ab"));
 
-        Assert.AreEqual("foo", DiscordHelper.StripQuotes("foo"));
-        Assert.AreEqual("foo bar", DiscordHelper.StripQuotes("foo bar"));
-        Assert.AreEqual("foo \"bar\" baz", DiscordHelper.StripQuotes("foo \"bar\" baz"));
+        Assert.AreEqual("foo", StripQuotes("foo"));
+        Assert.AreEqual("foo bar", StripQuotes("foo bar"));
+        Assert.AreEqual("foo \"bar\" baz", StripQuotes("foo \"bar\" baz"));
 
-        Assert.AreEqual("foo", DiscordHelper.StripQuotes("\"foo\""));
-        Assert.AreEqual("foo bar", DiscordHelper.StripQuotes("\"foo bar\""));
-        Assert.AreEqual("foo \"bar\" baz", DiscordHelper.StripQuotes("\"foo \"bar\" baz\""));
+        Assert.AreEqual("foo", StripQuotes("\"foo\""));
+        Assert.AreEqual("foo bar", StripQuotes("\"foo bar\""));
+        Assert.AreEqual("foo \"bar\" baz", StripQuotes("\"foo \"bar\" baz\""));
 
-        Assert.AreEqual("foo", DiscordHelper.StripQuotes("'foo'"));
-        Assert.AreEqual("foo", DiscordHelper.StripQuotes("ʺfooʺ"));
-        Assert.AreEqual("foo", DiscordHelper.StripQuotes("˝fooˮ"));
-        Assert.AreEqual("foo", DiscordHelper.StripQuotes("“foo”"));
-        Assert.AreEqual("foo", DiscordHelper.StripQuotes("'foo”"));
+        Assert.AreEqual("foo", StripQuotes("'foo'"));
+        Assert.AreEqual("foo", StripQuotes("ʺfooʺ"));
+        Assert.AreEqual("foo", StripQuotes("˝fooˮ"));
+        Assert.AreEqual("foo", StripQuotes("“foo”"));
+        Assert.AreEqual("foo", StripQuotes("'foo”"));
     }
 
     [TestMethod()]
     public void GetArgument_NoQuotesTests()
     {
-        Assert.AreEqual((null, null), DiscordHelper.GetArgument(""));
+        Assert.AreEqual((null, null), GetArgument(""));
 
-        Assert.AreEqual((null, null), DiscordHelper.GetArgument(" "));
+        Assert.AreEqual((null, null), GetArgument(" "));
 
-        Assert.AreEqual(("foo", null), DiscordHelper.GetArgument("foo"));
+        Assert.AreEqual(("foo", null), GetArgument("foo"));
 
-        Assert.AreEqual(("foo", null), DiscordHelper.GetArgument("foo "));
+        Assert.AreEqual(("foo", null), GetArgument("foo "));
 
-        Assert.AreEqual(("foo", null), DiscordHelper.GetArgument(" foo"));
+        Assert.AreEqual(("foo", null), GetArgument(" foo"));
 
-        Assert.AreEqual(("foo", "bar"), DiscordHelper.GetArgument("foo bar"));
-        Assert.AreEqual(("bar", null), DiscordHelper.GetArgument("bar"));
+        Assert.AreEqual(("foo", "bar"), GetArgument("foo bar"));
+        Assert.AreEqual(("bar", null), GetArgument("bar"));
 
-        Assert.AreEqual(("foo", "bar"), DiscordHelper.GetArgument("foo    bar"));
-        Assert.AreEqual(("bar", null), DiscordHelper.GetArgument("bar"));
+        Assert.AreEqual(("foo", "bar"), GetArgument("foo    bar"));
+        Assert.AreEqual(("bar", null), GetArgument("bar"));
 
-        Assert.AreEqual(("foo", "bar   "), DiscordHelper.GetArgument("foo bar   "));
-        Assert.AreEqual(("bar", null), DiscordHelper.GetArgument("bar   "));
+        Assert.AreEqual(("foo", "bar   "), GetArgument("foo bar   "));
+        Assert.AreEqual(("bar", null), GetArgument("bar   "));
 
-        Assert.AreEqual(("foo", "bar"), DiscordHelper.GetArgument("   foo bar"));
-        Assert.AreEqual(("bar", null), DiscordHelper.GetArgument("bar"));
+        Assert.AreEqual(("foo", "bar"), GetArgument("   foo bar"));
+        Assert.AreEqual(("bar", null), GetArgument("bar"));
 
-        Assert.AreEqual(("foo", "baaaar"), DiscordHelper.GetArgument("foo baaaar"));
-        Assert.AreEqual(("baaaar", null), DiscordHelper.GetArgument("baaaar"));
+        Assert.AreEqual(("foo", "baaaar"), GetArgument("foo baaaar"));
+        Assert.AreEqual(("baaaar", null), GetArgument("baaaar"));
 
-        Assert.AreEqual(("foo", "bar baz"), DiscordHelper.GetArgument("foo bar baz"));
-        Assert.AreEqual(("bar", "baz"), DiscordHelper.GetArgument("bar baz"));
-        Assert.AreEqual(("baz", null), DiscordHelper.GetArgument("baz"));
+        Assert.AreEqual(("foo", "bar baz"), GetArgument("foo bar baz"));
+        Assert.AreEqual(("bar", "baz"), GetArgument("bar baz"));
+        Assert.AreEqual(("baz", null), GetArgument("baz"));
 
-        Assert.AreEqual(("foo", "bar   baz"), DiscordHelper.GetArgument("foo   bar   baz"));
-        Assert.AreEqual(("bar", "baz"), DiscordHelper.GetArgument("bar   baz"));
-        Assert.AreEqual(("baz", null), DiscordHelper.GetArgument("baz"));
+        Assert.AreEqual(("foo", "bar   baz"), GetArgument("foo   bar   baz"));
+        Assert.AreEqual(("bar", "baz"), GetArgument("bar   baz"));
+        Assert.AreEqual(("baz", null), GetArgument("baz"));
 
-        Assert.AreEqual(("foo", "bar   baz   "), DiscordHelper.GetArgument("   foo   bar   baz   "));
-        Assert.AreEqual(("bar", "baz   "), DiscordHelper.GetArgument("bar   baz   "));
-        Assert.AreEqual(("baz", null), DiscordHelper.GetArgument("baz   "));
+        Assert.AreEqual(("foo", "bar   baz   "), GetArgument("   foo   bar   baz   "));
+        Assert.AreEqual(("bar", "baz   "), GetArgument("bar   baz   "));
+        Assert.AreEqual(("baz", null), GetArgument("baz   "));
     }
 
     [TestMethod()]
     public void GetArgument_QuotesTests()
     {
-        Assert.AreEqual(("", null), DiscordHelper.GetArgument("\"\""));
+        Assert.AreEqual(("", null), GetArgument("\"\""));
 
-        Assert.AreEqual(("foo", null), DiscordHelper.GetArgument("\"foo\""));
+        Assert.AreEqual(("foo", null), GetArgument("\"foo\""));
 
-        Assert.AreEqual(("foo bar", null), DiscordHelper.GetArgument("\"foo bar\""));
+        Assert.AreEqual(("foo bar", null), GetArgument("\"foo bar\""));
 
-        Assert.AreEqual(("foo", "\"bar\""), DiscordHelper.GetArgument("foo \"bar\""));
-        Assert.AreEqual(("bar", null), DiscordHelper.GetArgument("\"bar\""));
+        Assert.AreEqual(("foo", "\"bar\""), GetArgument("foo \"bar\""));
+        Assert.AreEqual(("bar", null), GetArgument("\"bar\""));
 
-        Assert.AreEqual(("foo", "\"bar baz\" quux"), DiscordHelper.GetArgument("foo \"bar baz\" quux"));
-        Assert.AreEqual(("bar baz", "quux"), DiscordHelper.GetArgument("\"bar baz\" quux"));
-        Assert.AreEqual(("quux", null), DiscordHelper.GetArgument("quux"));
+        Assert.AreEqual(("foo", "\"bar baz\" quux"), GetArgument("foo \"bar baz\" quux"));
+        Assert.AreEqual(("bar baz", "quux"), GetArgument("\"bar baz\" quux"));
+        Assert.AreEqual(("quux", null), GetArgument("quux"));
     }
 
     [TestMethod()]
     public void GetArgument_EscapedQuotesTests()
     {
-        var parse = DiscordHelper.GetArgument("""
+        var parse = GetArgument("""
             "\""
             """);
         Assert.AreEqual(("""
             \"
             """, null), parse);
 
-        parse = DiscordHelper.GetArgument("""
+        parse = GetArgument("""
             "foo\"bar"
             """);
         Assert.AreEqual(("""
             foo\"bar
             """, null), parse);
 
-        parse = DiscordHelper.GetArgument("""
+        parse = GetArgument("""
             "fo\"o b\"ar"
             """);
         Assert.AreEqual(("""
             fo\"o b\"ar
             """, null), parse);
 
-        parse = DiscordHelper.GetArgument("""
+        parse = GetArgument("""
             foo\" "bar"
             """);
         Assert.AreEqual(("""
@@ -126,24 +125,24 @@ public class DiscordHelperTests
             """, """
             "bar"
             """), parse);
-        parse = DiscordHelper.GetArgument("""
+        parse = GetArgument("""
             "bar"
             """);
         Assert.AreEqual(("bar", null), parse);
 
-        parse = DiscordHelper.GetArgument("""
+        parse = GetArgument("""
             foo "bar baz\"" quux
             """);
         Assert.AreEqual(("foo", """
             "bar baz\"" quux
             """), parse);
-        parse = DiscordHelper.GetArgument("""
+        parse = GetArgument("""
             "bar baz\"" quux
             """);
         Assert.AreEqual(("""
             bar baz\"
             """, "quux"), parse);
-        Assert.AreEqual(("quux", null), DiscordHelper.GetArgument("quux"));
+        Assert.AreEqual(("quux", null), GetArgument("quux"));
     }
 
     [TestMethod()]
@@ -184,7 +183,6 @@ public class DiscordHelperTests
         Assert.AreEqual("Izzy", TrimDiscordWhitespace("\n<:blank:833008517257756752>Izzy\n<:blank:833008517257756752>"));
 
         Assert.AreEqual("IzzyIzzyIzzy", TrimDiscordWhitespace("\n<:blank:833008517257756752> \n<:blank:833008517257756752> \nIzzyIzzyIzzy\n"));
-
     }
 
     [TestMethod()]

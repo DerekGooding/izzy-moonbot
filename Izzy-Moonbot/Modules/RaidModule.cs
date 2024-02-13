@@ -1,35 +1,24 @@
-using System;
-using System.Linq;
-using System.Threading.Tasks;
 using Discord.Commands;
 using Izzy_Moonbot.Adapters;
 using Izzy_Moonbot.Attributes;
 using Izzy_Moonbot.Helpers;
 using Izzy_Moonbot.Service;
 using Izzy_Moonbot.Settings;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Izzy_Moonbot.Modules;
 
 [Summary("Anti-raid related commands.")]
-public class RaidModule : ModuleBase<SocketCommandContext>
+public class RaidModule(Config config, RaidService raidService, TransientState state,
+    ScheduleService scheduleService, ModService modService, GeneralStorage generalStorage) : ModuleBase<SocketCommandContext>
 {
-    private readonly ModService _modService;
-    private readonly RaidService _raidService;
-    private readonly ScheduleService _scheduleService;
-    private readonly Config _config;
-    private readonly TransientState _state;
-    private readonly GeneralStorage _generalStorage;
-
-    public RaidModule(Config config, RaidService raidService, TransientState state,
-        ScheduleService scheduleService, ModService modService, GeneralStorage generalStorage)
-    {
-        _config = config;
-        _raidService = raidService;
-        _state = state;
-        _scheduleService = scheduleService;
-        _modService = modService;
-        _generalStorage = generalStorage;
-    }
+    private readonly ModService _modService = modService;
+    private readonly RaidService _raidService = raidService;
+    private readonly ScheduleService _scheduleService = scheduleService;
+    private readonly Config _config = config;
+    private readonly TransientState _state = state;
+    private readonly GeneralStorage _generalStorage = generalStorage;
 
     [Command("ass")]
     [Summary("Set `AutoSilenceNewJoins` to `true`, then silence recent joins (as defined by `.config RecentJoinDecay`) and suspected raiders (if there's an ongoing join spike / possible raid).")]
@@ -65,7 +54,7 @@ public class RaidModule : ModuleBase<SocketCommandContext>
         var msg = $"I've set `AutoSilenceNewJoins` to `true`";
         if (suspectedRaiders.Any())
             msg += $" and silenced the following recent joins and/or suspected raiders: {string.Join(' ', allUsersToSilence.Select(u => $"<@{u.Id}>"))}\n" + RaidService.PLEASE_ASSOFF;
-        else if (recentJoins.Any())
+        else if (recentJoins.Count != 0)
             msg += $" and silenced the following recent joins: {string.Join(' ', allUsersToSilence.Select(u => $"<@{u.Id}>"))}\n" + RaidService.PLEASE_ASSOFF;
         else
             // "users must have users in them" is a poorly chosen error message that this

@@ -1,23 +1,17 @@
-using System.Linq;
-using System.Threading.Tasks;
 using Discord;
 using Discord.Commands;
 using Izzy_Moonbot.Adapters;
 using Izzy_Moonbot.Attributes;
 using Izzy_Moonbot.Helpers;
 using Izzy_Moonbot.Service;
+using System.Threading.Tasks;
 
 namespace Izzy_Moonbot.Modules;
 
 [Summary("Anti-spam related commands.")]
-public class SpamModule : ModuleBase<SocketCommandContext>
+public class SpamModule(SpamService spamService) : ModuleBase<SocketCommandContext>
 {
-    private readonly SpamService _spamService;
-
-    public SpamModule(SpamService spamService)
-    {
-        _spamService = spamService;
-    }
+    private readonly SpamService _spamService = spamService;
 
     [Command("getpressure")]
     [Summary("Get a user's pressure")]
